@@ -1,0 +1,822 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum FirmStatus {
+  Active
+  Suspended
+  Inactive
+}
+enum UserStatus {
+  Invited
+  Active
+  Inactive
+}
+model Firm {
+  workAllocations WorkAllocation[]
+  workflowTemplates WorkflowTemplate[]
+  id                          String @id @default(uuid()) @db.Uuid
+  firmName                    String @map("firm_name")
+  displayName                 String @map("display_name")
+  status                      FirmStatus @default(Active)
+  timezone                    String @default("America/Chicago")
+  defaultCurrency             String @default("USD") @map("default_currency")
+  standardWeeklyCapacityHours Float @default(40) @map("standard_weekly_capacity_hours")
+  createdAt                   DateTime @default(now()) @map("created_at")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+  offices Office[]
+  users User[]
+  roles Role[]
+  auditLogs AuditLog[]
+  clients Client[]
+  entityTypes EntityType[]
+  serviceLines ServiceLine[]
+  clientFields ClientCustomFieldDefinition[]
+  engagements Engagement[]
+  engagementTypes EngagementType[]
+  engagementFields EngagementCustomFieldDefinition[]
+  @@map("firms")
+}
+model Office {
+  id         String @id @default(uuid()) @db.Uuid
+  firmId     String @db.Uuid @map("firm_id")
+  firm       Firm @relation(fields: [firmId], references: [id])
+  officeName String @map("office_name")
+  city       String
+  state      String
+  country    String
+  timezone   String?
+  active     Boolean @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  users      User[]
+  clients    Client[]
+  engagements Engagement[]
+  @@unique([firmId, id])
+  @@unique([firmId, officeName])
+  @@map("offices")
+}
+model User {
+  workAllocations WorkAllocation[] @relation("AllocationEmployee")
+  allocatedWork WorkAllocation[] @relation("AllocationCreator")
+  createdTemplates WorkflowTemplate[]
+  templateStageOwners WorkflowTemplateStage[]
+  workflowStageOwners EngagementWorkflowStage[] @relation("StageOwner")
+  workflowSpecificOwners EngagementWorkflowStage[] @relation("SnapshotOwner")
+  stageVisits StageVisit[]
+  movementsFrom WorkflowMovement[] @relation("MovementFrom")
+  movementsTo WorkflowMovement[] @relation("MovementTo")
+  movementsBy WorkflowMovement[] @relation("MovementActor")
+  id                  String @id @default(uuid()) @db.Uuid
+  firmId              String @db.Uuid @map("firm_id")
+  firm                Firm @relation(fields: [firmId], references: [id])
+  primaryOfficeId     String? @db.Uuid @map("primary_office_id")
+  primaryOffice       Office? @relation(fields: [firmId, primaryOfficeId], references: [firmId, id])
+  firstName           String @map("first_name")
+  lastName            String @map("last_name")
+  email               String @unique
+  passwordHash        String? @map("password_hash")
+  roleId              String @db.Uuid @map("role_id")
+  role                Role @relation(fields: [firmId, roleId], references: [firmId, id])
+  jobTitle            String @default("") @map("job_title")
+  managerId           String? @db.Uuid @map("manager_id")
+  manager             User? @relation("Management", fields: [firmId, managerId], references: [firmId, id])
+  directReports       User[] @relation("Management")
+  weeklyCapacityHours Float @default(40) @map("weekly_capacity_hours")
+  status              UserStatus @default(Invited)
+  lastLoginAt         DateTime? @map("last_login_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  sessions            Session[]
+  invitations         Invitation[]
+  passwordResets      PasswordReset[]
+  audits              AuditLog[]
+  partnerClients      Client[] @relation("ClientPartner")
+  managerClients      Client[] @relation("ClientManager")
+  createdClients      Client[] @relation("ClientCreator")
+  updatedClients      Client[] @relation("ClientUpdater")
+  clientImports       ClientImportJob[]
+  partnerEngagements Engagement[] @relation("EngagementPartner")
+  managerEngagements Engagement[] @relation("EngagementManager")
+  reviewerEngagements Engagement[] @relation("EngagementReviewer")
+  preparerEngagements Engagement[] @relation("EngagementPreparer")
+  createdEngagements Engagement[] @relation("EngagementCreator")
+  updatedEngagements Engagement[] @relation("EngagementUpdater")
+  assignmentChanges EngagementAssignmentHistory[] @relation("AssignmentActor")
+  oldAssignments EngagementAssignmentHistory[] @relation("AssignmentOld")
+  newAssignments EngagementAssignmentHistory[] @relation("AssignmentNew")
+  statusChanges EngagementStatusHistory[]
+  engagementImports EngagementImportJob[]
+  @@unique([firmId, id])
+  @@index([firmId, status])
+  @@map("users")
+}
+model Role {
+  id          String @id @default(uuid()) @db.Uuid
+  firmId      String @db.Uuid @map("firm_id")
+  firm        Firm @relation(fields: [firmId], references: [id])
+  roleName    String @map("role_name")
+  description String @default("")
+  isDefault   Boolean @default(false) @map("is_default")
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  permissions RolePermission[]
+  users       User[]
+  @@unique([firmId, id])
+  @@unique([firmId, roleName])
+  @@map("roles")
+}
+model Permission {
+  key   String @id
+  label String
+  roles RolePermission[]
+  @@map("permissions")
+}
+model RolePermission {
+  firmId        String @db.Uuid @map("firm_id")
+  roleId        String @db.Uuid @map("role_id")
+  permissionKey String @map("permission_key")
+  role          Role @relation(fields: [firmId, roleId], references: [firmId, id])
+  permission    Permission @relation(fields: [permissionKey], references: [key])
+  @@id([firmId, roleId, permissionKey])
+  @@map("role_permissions")
+}
+model Session {
+  id        String @id @default(uuid()) @db.Uuid
+  firmId    String @db.Uuid @map("firm_id")
+  userId    String @db.Uuid @map("user_id")
+  user      User @relation(fields: [firmId, userId], references: [firmId, id])
+  tokenHash String @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([firmId, userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+model Invitation {
+  id         String @id @default(uuid()) @db.Uuid
+  firmId     String @db.Uuid @map("firm_id")
+  userId     String @db.Uuid @map("user_id")
+  user       User @relation(fields: [firmId, userId], references: [firmId, id])
+  tokenHash  String @unique @map("token_hash")
+  expiresAt  DateTime @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  @@index([firmId, userId])
+  @@map("invitations")
+}
+model PasswordReset {
+  id         String @id @default(uuid()) @db.Uuid
+  firmId     String @db.Uuid @map("firm_id")
+  userId     String @db.Uuid @map("user_id")
+  user       User @relation(fields: [firmId, userId], references: [firmId, id])
+  tokenHash  String @unique @map("token_hash")
+  expiresAt  DateTime @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  @@index([firmId, userId])
+  @@map("password_resets")
+}
+model AuditLog {
+  id          String @id @default(uuid()) @db.Uuid
+  firmId      String @db.Uuid @map("firm_id")
+  firm        Firm @relation(fields: [firmId], references: [id])
+  actorUserId String? @db.Uuid @map("actor_user_id")
+  actor       User? @relation(fields: [firmId, actorUserId], references: [firmId, id])
+  action      String
+  entityType  String @map("entity_type")
+  entityId    String @map("entity_id")
+  timestamp   DateTime @default(now())
+  metadata    Json
+  @@index([firmId, timestamp])
+  @@index([firmId, entityType, entityId, timestamp])
+  @@map("audit_logs")
+}
+model RateLimit {
+  key       String @id
+  count     Int
+  expiresAt DateTime @map("expires_at")
+  @@index([expiresAt])
+  @@map("rate_limits")
+}
+
+enum ClientStatus {
+  Prospect
+  Onboarding
+  Active
+  OnHold
+  Inactive
+  Terminated
+}
+enum ClientFieldType {
+  Text
+  Number
+  Date
+  Boolean
+  Dropdown
+}
+model EntityType {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  name String
+  normalizedName String @map("normalized_name")
+  active Boolean @default(true)
+  clients Client[]
+  @@unique([firmId, id])
+  @@unique([firmId, normalizedName])
+  @@map("entity_types")
+}
+model ServiceLine {
+  workflowTemplates WorkflowTemplate[]
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  name String
+  normalizedName String @map("normalized_name")
+  active Boolean @default(true)
+  clients ClientServiceLine[]
+  engagements Engagement[]
+  engagementTypes EngagementType[]
+  @@unique([firmId, id])
+  @@unique([firmId, normalizedName])
+  @@map("service_lines")
+}
+model Client {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  clientCode String @map("client_code")
+  legalName String @map("legal_name")
+  displayName String @map("display_name")
+  normalizedLegalName String @map("normalized_legal_name")
+  normalizedDisplayName String @map("normalized_display_name")
+  entityTypeId String @db.Uuid @map("entity_type_id")
+  entityType EntityType @relation(fields: [firmId, entityTypeId], references: [firmId, id])
+  status ClientStatus @default(Prospect)
+  primaryOfficeId String @db.Uuid @map("primary_office_id")
+  primaryOffice Office @relation(fields: [firmId, primaryOfficeId], references: [firmId, id])
+  responsiblePartnerId String? @db.Uuid @map("responsible_partner_id")
+  responsiblePartner User? @relation("ClientPartner", fields: [firmId, responsiblePartnerId], references: [firmId, id])
+  responsibleManagerId String? @db.Uuid @map("responsible_manager_id")
+  responsibleManager User? @relation("ClientManager", fields: [firmId, responsibleManagerId], references: [firmId, id])
+  industry String @default("")
+  website String @default("")
+  taxYearEndMonth Int? @map("tax_year_end_month")
+  taxYearEndDay Int? @map("tax_year_end_day")
+  onboardingDate DateTime? @db.Date @map("onboarding_date")
+  terminationDate DateTime? @db.Date @map("termination_date")
+  internalNotes String @default("") @map("internal_notes")
+  createdByUserId String @db.Uuid @map("created_by_user_id")
+  createdBy User @relation("ClientCreator", fields: [firmId, createdByUserId], references: [firmId, id])
+  updatedByUserId String @db.Uuid @map("updated_by_user_id")
+  updatedBy User @relation("ClientUpdater", fields: [firmId, updatedByUserId], references: [firmId, id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  version Int @default(1)
+  address ClientAddress?
+  contacts ClientContact[]
+  services ClientServiceLine[]
+  customValues ClientCustomFieldValue[]
+  engagements Engagement[]
+  @@unique([firmId, id])
+  @@unique([firmId, clientCode])
+  @@index([firmId, status])
+  @@index([firmId, primaryOfficeId])
+  @@index([firmId, responsiblePartnerId])
+  @@index([firmId, responsibleManagerId])
+  @@index([firmId, entityTypeId])
+  @@index([firmId, normalizedLegalName])
+  @@index([firmId, normalizedDisplayName])
+  @@map("clients")
+}
+model ClientAddress {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  clientId String @unique @db.Uuid @map("client_id")
+  client Client @relation(fields: [firmId, clientId], references: [firmId, id])
+  addressLine1 String @default("") @map("address_line_1")
+  addressLine2 String @default("") @map("address_line_2")
+  city String @default("")
+  stateProvince String @default("") @map("state_province")
+  postalCode String @default("") @map("postal_code")
+  country String @default("")
+  @@unique([firmId, clientId])
+  @@map("client_addresses")
+}
+model ClientContact {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  clientId String @db.Uuid @map("client_id")
+  client Client @relation(fields: [firmId, clientId], references: [firmId, id])
+  firstName String @map("first_name")
+  lastName String @map("last_name")
+  jobTitle String @default("") @map("job_title")
+  email String @default("")
+  phone String @default("")
+  mobile String @default("")
+  contactType String @default("Other") @map("contact_type")
+  isPrimary Boolean @default(false) @map("is_primary")
+  notes String @default("")
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([firmId, id])
+  @@index([firmId, clientId])
+  @@map("client_contacts")
+}
+model ClientServiceLine {
+  firmId String @db.Uuid @map("firm_id")
+  clientId String @db.Uuid @map("client_id")
+  serviceLineId String @db.Uuid @map("service_line_id")
+  client Client @relation(fields: [firmId, clientId], references: [firmId, id])
+  serviceLine ServiceLine @relation(fields: [firmId, serviceLineId], references: [firmId, id])
+  @@id([firmId, clientId, serviceLineId])
+  @@index([firmId, serviceLineId, clientId])
+  @@map("client_service_lines")
+}
+model ClientCustomFieldDefinition {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  name String
+  normalizedName String @map("normalized_name")
+  fieldType ClientFieldType @map("field_type")
+  options String[] @default([])
+  active Boolean @default(true)
+  values ClientCustomFieldValue[]
+  @@unique([firmId, id])
+  @@unique([firmId, normalizedName])
+  @@map("client_custom_field_definitions")
+}
+model ClientCustomFieldValue {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  clientId String @db.Uuid @map("client_id")
+  definitionId String @db.Uuid @map("definition_id")
+  client Client @relation(fields: [firmId, clientId], references: [firmId, id])
+  definition ClientCustomFieldDefinition @relation(fields: [firmId, definitionId], references: [firmId, id])
+  textValue String? @map("text_value")
+  numberValue Float? @map("number_value")
+  dateValue DateTime? @db.Date @map("date_value")
+  booleanValue Boolean? @map("boolean_value")
+  @@unique([firmId, clientId, definitionId])
+  @@index([firmId, definitionId])
+  @@map("client_custom_field_values")
+}
+model ClientImportJob {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  actorUserId String @db.Uuid @map("actor_user_id")
+  actor User @relation(fields: [firmId, actorUserId], references: [firmId, id])
+  status String @default("Preview")
+  fileName String @map("file_name")
+  rows Json
+  importedCount Int @default(0) @map("imported_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  completedAt DateTime? @map("completed_at")
+  @@unique([firmId, id])
+  @@index([firmId, createdAt])
+  @@map("client_import_jobs")
+}
+
+enum EngagementStatus {
+  Draft
+  Planned
+  Assigned
+  InProgress
+  OnHold
+  Completed
+  Cancelled
+}
+enum EngagementPriority {
+  Low
+  Normal
+  High
+  Urgent
+}
+enum EngagementPeriod {
+  Monthly
+  Quarterly
+  Annual
+  TaxYear
+  Custom
+  NotApplicable
+}
+enum EngagementStaffSlot {
+  Partner
+  Manager
+  Reviewer
+  Preparer
+}
+model EngagementType {
+  workflowTemplates WorkflowTemplate[] @relation("TemplateType")
+  defaultWorkflowTemplateId String? @db.Uuid @map("default_workflow_template_id")
+  defaultWorkflowTemplate WorkflowTemplate? @relation("DefaultTemplate", fields: [firmId, defaultWorkflowTemplateId], references: [firmId, id])
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  name String
+  normalizedName String @map("normalized_name")
+  serviceLineId String? @db.Uuid @map("service_line_id")
+  serviceLine ServiceLine? @relation(fields: [firmId, serviceLineId], references: [firmId, id])
+  active Boolean @default(true)
+  engagements Engagement[]
+  @@unique([firmId, id])
+  @@unique([firmId, normalizedName])
+  @@map("engagement_types")
+}
+model Engagement {
+  workAllocations WorkAllocation[]
+  workflow EngagementWorkflow?
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  clientId String @db.Uuid @map("client_id")
+  client Client @relation(fields: [firmId, clientId], references: [firmId, id])
+  engagementCode String @map("engagement_code")
+  engagementName String @map("engagement_name")
+  serviceLineId String @db.Uuid @map("service_line_id")
+  serviceLine ServiceLine @relation(fields: [firmId, serviceLineId], references: [firmId, id])
+  engagementTypeId String @db.Uuid @map("engagement_type_id")
+  engagementType EngagementType @relation(fields: [firmId, engagementTypeId], references: [firmId, id])
+  officeId String @db.Uuid @map("office_id")
+  office Office @relation(fields: [firmId, officeId], references: [firmId, id])
+  partnerId String? @db.Uuid @map("partner_id")
+  partner User? @relation("EngagementPartner", fields: [firmId, partnerId], references: [firmId, id])
+  managerId String? @db.Uuid @map("manager_id")
+  manager User? @relation("EngagementManager", fields: [firmId, managerId], references: [firmId, id])
+  reviewerId String? @db.Uuid @map("reviewer_id")
+  reviewer User? @relation("EngagementReviewer", fields: [firmId, reviewerId], references: [firmId, id])
+  preparerId String? @db.Uuid @map("preparer_id")
+  preparer User? @relation("EngagementPreparer", fields: [firmId, preparerId], references: [firmId, id])
+  status EngagementStatus @default(Draft)
+  priority EngagementPriority @default(Normal)
+  periodType EngagementPeriod @default(NotApplicable) @map("period_type")
+  periodStartDate DateTime? @db.Date @map("period_start_date")
+  periodEndDate DateTime? @db.Date @map("period_end_date")
+  reportingYear Int? @map("reporting_year")
+  allocationDate DateTime? @db.Date @map("allocation_date")
+  plannedStartDate DateTime? @db.Date @map("planned_start_date")
+  actualStartDate DateTime? @db.Date @map("actual_start_date")
+  dueDate DateTime? @db.Date @map("due_date")
+  completedDate DateTime? @db.Date @map("completed_date")
+  budgetHours Float? @map("budget_hours")
+  recurring Boolean @default(false)
+  recurrenceReference String? @map("recurrence_reference")
+  description String @default("")
+  internalNotes String @default("") @map("internal_notes")
+  createdByUserId String @db.Uuid @map("created_by_user_id")
+  createdBy User @relation("EngagementCreator", fields: [firmId, createdByUserId], references: [firmId, id])
+  updatedByUserId String @db.Uuid @map("updated_by_user_id")
+  updatedBy User @relation("EngagementUpdater", fields: [firmId, updatedByUserId], references: [firmId, id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  version Int @default(1)
+  assignments EngagementAssignmentHistory[]
+  statusHistory EngagementStatusHistory[]
+  customValues EngagementCustomFieldValue[]
+  @@unique([firmId, id])
+  @@unique([firmId, engagementCode])
+  @@index([firmId, clientId, dueDate])
+  @@index([firmId, status, dueDate])
+  @@index([firmId, dueDate])
+  @@index([firmId, serviceLineId])
+  @@index([firmId, engagementTypeId])
+  @@index([firmId, officeId])
+  @@index([firmId, partnerId, dueDate])
+  @@index([firmId, managerId, dueDate])
+  @@index([firmId, reviewerId, dueDate])
+  @@index([firmId, preparerId, dueDate])
+  @@map("engagements")
+}
+model EngagementAssignmentHistory {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementId String @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields: [firmId, engagementId], references: [firmId, id])
+  slot EngagementStaffSlot
+  oldUserId String? @db.Uuid @map("old_user_id")
+  oldUser User? @relation("AssignmentOld", fields: [firmId, oldUserId], references: [firmId, id])
+  newUserId String? @db.Uuid @map("new_user_id")
+  newUser User? @relation("AssignmentNew", fields: [firmId, newUserId], references: [firmId, id])
+  oldAllocationDate DateTime? @db.Date @map("old_allocation_date")
+  newAllocationDate DateTime? @db.Date @map("new_allocation_date")
+  actorUserId String @db.Uuid @map("actor_user_id")
+  actor User @relation("AssignmentActor", fields: [firmId, actorUserId], references: [firmId, id])
+  changedAt DateTime @default(now()) @map("changed_at")
+  @@index([firmId, engagementId, changedAt])
+  @@map("engagement_assignment_history")
+}
+model EngagementStatusHistory {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementId String @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields: [firmId, engagementId], references: [firmId, id])
+  oldStatus EngagementStatus? @map("old_status")
+  newStatus EngagementStatus @map("new_status")
+  oldCompletedDate DateTime? @db.Date @map("old_completed_date")
+  newCompletedDate DateTime? @db.Date @map("new_completed_date")
+  comment String @default("")
+  actorUserId String @db.Uuid @map("actor_user_id")
+  actor User @relation(fields: [firmId, actorUserId], references: [firmId, id])
+  changedAt DateTime @default(now()) @map("changed_at")
+  @@index([firmId, engagementId, changedAt])
+  @@map("engagement_status_history")
+}
+model EngagementCustomFieldDefinition {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  name String
+  normalizedName String @map("normalized_name")
+  fieldType ClientFieldType @map("field_type")
+  options String[] @default([])
+  active Boolean @default(true)
+  values EngagementCustomFieldValue[]
+  @@unique([firmId, id])
+  @@unique([firmId, normalizedName])
+  @@map("engagement_custom_field_definitions")
+}
+model EngagementCustomFieldValue {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementId String @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields: [firmId, engagementId], references: [firmId, id])
+  definitionId String @db.Uuid @map("definition_id")
+  definition EngagementCustomFieldDefinition @relation(fields: [firmId, definitionId], references: [firmId, id])
+  textValue String? @map("text_value")
+  numberValue Float? @map("number_value")
+  dateValue DateTime? @db.Date @map("date_value")
+  booleanValue Boolean? @map("boolean_value")
+  @@unique([firmId, engagementId, definitionId])
+  @@index([firmId, definitionId])
+  @@map("engagement_custom_field_values")
+}
+model EngagementImportJob {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  actorUserId String @db.Uuid @map("actor_user_id")
+  actor User @relation(fields: [firmId, actorUserId], references: [firmId, id])
+  status String @default("Preview")
+  fileName String @map("file_name")
+  rows Json
+  importedCount Int @default(0) @map("imported_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  completedAt DateTime? @map("completed_at")
+  @@unique([firmId, id])
+  @@index([firmId, createdAt])
+  @@map("engagement_import_jobs")
+}
+
+enum WorkflowTemplateStatus {
+  Draft
+  Published
+  Archived
+}
+enum WorkflowStatus {
+  Active
+  Completed
+}
+enum WorkflowStageState {
+  NotStarted
+  Current
+  Completed
+  Skipped
+}
+enum WorkflowOwnerType {
+  Partner
+  Manager
+  Reviewer
+  Preparer
+  SpecificUser
+  Manual
+}
+enum WorkflowCategory {
+  Queue
+  Preparation
+  Waiting
+  Review
+  Approval
+  Completion
+  Other
+}
+enum WorkflowMovementType {
+  Start
+  Forward
+  Return
+  Reassign
+  Skip
+  Complete
+  Reopen
+}
+model WorkflowTemplate {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  familyId String @default(uuid()) @db.Uuid @map("family_id")
+  name String
+  normalizedName String @map("normalized_name")
+  description String @default("")
+  serviceLineId String @db.Uuid @map("service_line_id")
+  serviceLine ServiceLine @relation(fields: [firmId, serviceLineId], references: [firmId, id])
+  engagementTypeId String? @db.Uuid @map("engagement_type_id")
+  engagementType EngagementType? @relation("TemplateType", fields: [firmId, engagementTypeId], references: [firmId, id])
+  defaultsFor EngagementType[] @relation("DefaultTemplate")
+  versionNumber Int @default(1) @map("version_number")
+  revision Int @default(1)
+  status WorkflowTemplateStatus @default(Draft)
+  active Boolean @default(true)
+  createdByUserId String @db.Uuid @map("created_by_user_id")
+  createdBy User @relation(fields: [firmId, createdByUserId], references: [firmId, id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  stages WorkflowTemplateStage[]
+  workflows EngagementWorkflow[]
+  @@unique([firmId, id])
+  @@unique([firmId, familyId, versionNumber])
+  @@unique([firmId, normalizedName, versionNumber])
+  @@index([firmId, status, serviceLineId, engagementTypeId])
+  @@map("workflow_templates")
+}
+model WorkflowTemplateStage {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  workflowTemplateId String @db.Uuid @map("workflow_template_id")
+  template WorkflowTemplate @relation(fields: [firmId, workflowTemplateId], references: [firmId, id])
+  name String
+  description String @default("")
+  sequence Int
+  category WorkflowCategory @default(Other)
+  defaultOwnerType WorkflowOwnerType @default(Manual) @map("default_owner_type")
+  specificUserId String? @db.Uuid @map("specific_user_id")
+  specificUser User? @relation(fields: [firmId, specificUserId], references: [firmId, id])
+  targetDays Int? @map("target_days")
+  instructions String @default("")
+  required Boolean @default(true)
+  isStart Boolean @default(false) @map("is_start")
+  isCompletion Boolean @default(false) @map("is_completion")
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  snapshots EngagementWorkflowStage[]
+  @@unique([firmId, id])
+  @@unique([firmId, workflowTemplateId, sequence])
+  @@map("workflow_template_stages")
+}
+model EngagementWorkflow {
+  workAllocations WorkAllocation[]
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementId String @unique @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields: [firmId, engagementId], references: [firmId, id])
+  sourceWorkflowTemplateId String @db.Uuid @map("source_workflow_template_id")
+  template WorkflowTemplate @relation(fields: [firmId, sourceWorkflowTemplateId], references: [firmId, id])
+  sourceTemplateVersion Int @map("source_template_version")
+  templateNameSnapshot String @map("template_name_snapshot")
+  currentStageId String? @db.Uuid @map("current_stage_id")
+  currentStage EngagementWorkflowStage? @relation("CurrentStage", fields: [firmId, id, currentStageId], references: [firmId, engagementWorkflowId, id])
+  status WorkflowStatus @default(Active)
+  revision Int @default(1)
+  startedAt DateTime @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  stages EngagementWorkflowStage[] @relation("WorkflowStages")
+  movements WorkflowMovement[]
+  visits StageVisit[]
+  @@unique([firmId, id])
+  @@unique([firmId, engagementId])
+  @@unique([firmId, engagementId, id])
+  @@index([firmId, sourceWorkflowTemplateId, status])
+  @@index([firmId, currentStageId])
+  @@map("engagement_workflows")
+}
+model EngagementWorkflowStage {
+  workAllocations WorkAllocation[]
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementWorkflowId String @db.Uuid @map("engagement_workflow_id")
+  workflow EngagementWorkflow @relation("WorkflowStages", fields: [firmId, engagementWorkflowId], references: [firmId, id])
+  currentFor EngagementWorkflow[] @relation("CurrentStage")
+  sourceTemplateStageId String @db.Uuid @map("source_template_stage_id")
+  sourceTemplateStage WorkflowTemplateStage @relation(fields: [firmId, sourceTemplateStageId], references: [firmId, id])
+  name String
+  description String @default("")
+  sequence Int
+  category WorkflowCategory
+  targetDays Int? @map("target_days")
+  instructions String @default("")
+  defaultOwnerType WorkflowOwnerType @map("default_owner_type")
+  specificUserId String? @db.Uuid @map("specific_user_id")
+  specificUser User? @relation("SnapshotOwner", fields: [firmId, specificUserId], references: [firmId, id])
+  required Boolean
+  isStart Boolean @map("is_start")
+  isCompletion Boolean @map("is_completion")
+  assignedUserId String? @db.Uuid @map("assigned_user_id")
+  assignedUser User? @relation("StageOwner", fields: [firmId, assignedUserId], references: [firmId, id])
+  state WorkflowStageState @default(NotStarted)
+  enteredAt DateTime? @map("entered_at")
+  completedAt DateTime? @map("completed_at")
+  skippedAt DateTime? @map("skipped_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  visits StageVisit[]
+  movementsFrom WorkflowMovement[] @relation("StageFrom")
+  movementsTo WorkflowMovement[] @relation("StageTo")
+  @@unique([firmId, engagementWorkflowId, id])
+  @@unique([firmId, engagementWorkflowId, sequence])
+  @@index([firmId, assignedUserId, state, enteredAt])
+  @@map("engagement_workflow_stages")
+}
+
+enum AllocationStatus {
+  Planned
+  Assigned
+  InProgress
+  Blocked
+  Completed
+  Cancelled
+}
+
+model WorkAllocation {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  engagementId String @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields: [firmId, engagementId], references: [firmId, id])
+  engagementWorkflowId String? @db.Uuid @map("engagement_workflow_id")
+  workflow EngagementWorkflow? @relation(fields: [firmId, engagementId, engagementWorkflowId], references: [firmId, engagementId, id])
+  engagementWorkflowStageId String? @db.Uuid @map("engagement_workflow_stage_id")
+  stage EngagementWorkflowStage? @relation(fields: [firmId, engagementWorkflowId, engagementWorkflowStageId], references: [firmId, engagementWorkflowId, id])
+  assignedUserId String @db.Uuid @map("assigned_user_id")
+  assignedUser User @relation("AllocationEmployee", fields: [firmId, assignedUserId], references: [firmId, id])
+  assignedByUserId String @db.Uuid @map("assigned_by_user_id")
+  assignedBy User @relation("AllocationCreator", fields: [firmId, assignedByUserId], references: [firmId, id])
+  allocationDate DateTime @db.Date @map("allocation_date")
+  plannedStartAt DateTime? @map("planned_start_at")
+  plannedEndAt DateTime? @map("planned_end_at")
+  allocatedHours Decimal @db.Decimal(8, 2) @map("allocated_hours")
+  status AllocationStatus @default(Assigned)
+  priority EngagementPriority @default(Normal)
+  description String @default("")
+  allocationNote String @default("") @map("allocation_note")
+  blockedReason String @default("") @map("blocked_reason")
+  revision Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  @@unique([firmId, id])
+  @@index([firmId, engagementId, allocationDate])
+  @@index([firmId, assignedUserId, allocationDate])
+  @@index([firmId, allocationDate, status])
+  @@index([firmId, status])
+  @@index([firmId, engagementWorkflowStageId])
+  @@map("work_allocations")
+}
+model WorkflowMovement {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementWorkflowId String @db.Uuid @map("engagement_workflow_id")
+  workflow EngagementWorkflow @relation(fields: [firmId, engagementWorkflowId], references: [firmId, id])
+  fromStageId String? @db.Uuid @map("from_stage_id")
+  fromStage EngagementWorkflowStage? @relation("StageFrom", fields: [firmId, engagementWorkflowId, fromStageId], references: [firmId, engagementWorkflowId, id])
+  toStageId String @db.Uuid @map("to_stage_id")
+  toStage EngagementWorkflowStage @relation("StageTo", fields: [firmId, engagementWorkflowId, toStageId], references: [firmId, engagementWorkflowId, id])
+  movementType WorkflowMovementType @map("movement_type")
+  fromUserId String? @db.Uuid @map("from_user_id")
+  fromUser User? @relation("MovementFrom", fields: [firmId, fromUserId], references: [firmId, id])
+  toUserId String? @db.Uuid @map("to_user_id")
+  toUser User? @relation("MovementTo", fields: [firmId, toUserId], references: [firmId, id])
+  movedByUserId String @db.Uuid @map("moved_by_user_id")
+  movedBy User @relation("MovementActor", fields: [firmId, movedByUserId], references: [firmId, id])
+  comment String @default("")
+  movedAt DateTime @default(now()) @map("moved_at")
+  revision Int
+  @@unique([firmId, engagementWorkflowId, revision])
+  @@index([firmId, engagementWorkflowId, movedAt])
+  @@map("workflow_movements")
+}
+model StageVisit {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementWorkflowId String @db.Uuid @map("engagement_workflow_id")
+  workflow EngagementWorkflow @relation(fields: [firmId, engagementWorkflowId], references: [firmId, id])
+  engagementWorkflowStageId String @db.Uuid @map("engagement_workflow_stage_id")
+  stage EngagementWorkflowStage @relation(fields: [firmId, engagementWorkflowId, engagementWorkflowStageId], references: [firmId, engagementWorkflowId, id])
+  assignedUserId String? @db.Uuid @map("assigned_user_id")
+  assignedUser User? @relation(fields: [firmId, assignedUserId], references: [firmId, id])
+  enteredAt DateTime @default(now()) @map("entered_at")
+  exitedAt DateTime? @map("exited_at")
+  exitType WorkflowMovementType? @map("exit_type")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([firmId, engagementWorkflowId, enteredAt])
+  @@index([firmId, engagementWorkflowStageId, enteredAt])
+  @@map("stage_visits")
+}

@@ -1,0 +1,53 @@
+{
+  "name": "setu-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "prisma generate && next build",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "eslint src scripts tests e2e prisma *.ts *.mjs",
+    "typecheck": "tsc --noEmit",
+    "db:local": "tsx scripts/local-db.ts",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "tsx scripts/test-migrate.ts && vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "csv-parse": "^7.0.3",
+    "csv-stringify": "^6.9.0",
+    "lucide-react": "^0.577.0",
+    "next": "16.3.6",
+    "nodemailer": "10.0.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^22.19.15",
+    "@types/nodemailer": "^7.0.11",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "dotenv": "^17.3.1",
+    "embedded-postgres": "18.4.0-beta.17",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "16.3.6",
+    "prettier": "^3.9.9",
+    "prisma": "6.19.3",
+    "tailwindcss": "^4.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2"
+  }
+}

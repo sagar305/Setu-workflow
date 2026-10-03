@@ -1,0 +1,16 @@
+import { z } from 'zod';
+import { PERMISSIONS } from './permissions';
+export const email = z.string().trim().toLowerCase().email().max(254);
+export const password = z.string().min(12, 'Use at least 12 characters.').max(128);
+export const id = z.string().uuid();
+const optionalId = z.preprocess(v => v === '' ? null : v, id.nullable());
+const name = z.string().trim().min(1).max(100);
+const capacity = z.coerce.number().min(0).max(168);
+export const timezone = z.string().max(100).refine(value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true; } catch { return false; } }, 'Enter a valid IANA timezone.');
+export const loginInput = z.object({ email, password: z.string().min(1).max(128) });
+export const userInput = z.object({ firstName: name, lastName: name, email, roleId: id, primaryOfficeId: optionalId, managerId: optionalId, weeklyCapacityHours: capacity, jobTitle: z.string().trim().max(100).default('') });
+export const userEdit = userInput.omit({ email: true }).extend({ status: z.enum(['Active', 'Inactive', 'Invited']) });
+export const officeInput = z.object({ officeName: name, city: name, state: z.string().trim().max(100), country: name, timezone: z.preprocess(v => v === '' ? null : v, timezone.nullable()), active: z.boolean().default(true) });
+export const roleInput = z.object({ roleName: name, description: z.string().trim().max(500), permissions: z.array(z.string()).max(Object.keys(PERMISSIONS).length), active: z.boolean().default(true) });
+export const firmInput = z.object({ displayName: name, timezone, defaultCurrency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).refine(v => Intl.supportedValuesOf('currency').includes(v), 'Enter a supported currency code.'), standardWeeklyCapacityHours: capacity });
+export const tokenInput = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/), password, confirmPassword: z.string() }).refine(v => v.password === v.confirmPassword, { message: 'Passwords must match.', path: ['confirmPassword'] });

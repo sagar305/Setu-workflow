@@ -1,0 +1,92 @@
+.eng-client-search {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.eng-client-search .field {
+  flex: 1;
+}
+.engagement-table {
+  width: 100%;
+  table-layout: fixed;
+}
+.engagement-table th,
+.engagement-table td {
+  overflow-wrap: anywhere;
+}
+.engagement-table th:first-child:has(input) {
+  width: 34px;
+}
+.engagement-table th:nth-child(3) {
+  width: 18%;
+}
+.overdue-label {
+  display: block;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 700;
+}
+.priority.high,
+.priority.urgent {
+  font-weight: 700;
+}
+.priority.urgent {
+  color: #b42318;
+}
+.status.inprogress {
+  background: #e8f0ff;
+  color: #2855a3;
+}
+.client-filter-card {
+  padding: 24px;
+  margin: 24px 0;
+}
+.client-filter-card .client-filters {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 16px;padding:0;margin:0;}
+@media(max-width:1100px){.client-filter-card .client-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.client-filter-card .client-filters{grid-template-columns:1fr 1fr}.client-filter-card .client-filters .field{grid-column:auto}.client-filter-card .client-filters>.field:first-child{grid-column:1/-1}}
+@media(max-width:450px){.client-filter-card .client-filters{grid-template-columns:1fr}}
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+}
+.stat-card {
+  padding: 22px;
+  text-decoration: none;
+}
+.stat-card strong {
+  display: block;
+  font-size: 30px;
+  margin-top: 10px;
+}
+.engagement-table td {
+  vertical-align: top;
+  padding: 14px 10px;
+  font-size: 13px;
+}
+.engagement-table th {padding:14px 10px;font-size:12px;}
+.pagination {padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
+.column-picker {position:relative;}
+.column-picker>div {position:absolute;right:0;top:48px;z-index:5;min-width:230px;max-height:420px;overflow:auto;background:var(--surface,#fff);padding:16px;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 22px #123b3420;}
+.client-details dd {
+  white-space: pre-wrap;
+}
+@media (max-width: 900px) {
+  .engagement-table {
+    min-width: 850px;
+  }
+  .table-toolbar {
+    flex-wrap: wrap;
+  }
+  .eng-client-search {
+    flex-wrap: wrap;
+  }
+}

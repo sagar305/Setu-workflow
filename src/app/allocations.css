@@ -1,0 +1,154 @@
+.allocation-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  min-width: 0;
+}
+.allocation-workspace > * {
+  min-width: 0;
+}
+.allocation-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 20px;
+}
+.allocation-summary > span {
+  flex: 1;
+  min-width: 120px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.allocation-summary strong {
+  display: block;
+  color: var(--ink);
+  font-size: 24px;
+  margin-top: 7px;
+}
+.allocation-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.allocation-days > div {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e2e8e5;
+  border-radius: 8px;
+}
+.allocation-days small {
+  font-size: 11px;
+}
+.allocation-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.allocation-table th {
+  white-space: normal;
+  overflow-wrap: normal;
+  line-height: 1.45;
+}
+.allocation-table th:nth-last-child(2) {
+  width: 12%;
+}
+.allocation-table th:last-child {
+  width: 16%;
+}
+.allocation-table td {
+  font-size: 13px;
+}
+.allocation-actions select {
+  margin-top: 10px;
+  padding: 8px;
+  font-size: 12px;
+  width: 100%;
+  min-width: 0;
+}
+.allocation-filters > summary {
+  cursor: pointer;
+  padding: 18px 24px;
+  color: #245446;
+  font-weight: 600;
+}
+.allocation-filters .client-form-section {
+  padding: 4px 24px 24px;
+}
+.allocation-filters .form-grid {
+  gap: 14px;
+}
+.allocation-table td {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.allocation-table td > small,
+.allocation-table td > strong,
+.allocation-table td > a,
+.allocation-table td > .overdue-label {
+  display: block;
+  margin: 4px 0;
+}
+.allocation-actions .actions {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.allocation-actions .text-button {
+  text-align: left;
+  font-size: 12px;
+}
+.allocation-editor {
+  padding: 16px;
+  margin-top: 12px;
+  border: 1px solid #cddbd4;
+  background: #f7faf8;
+  border-radius: 8px;
+}
+.allocation-editor .form-grid {
+  grid-template-columns: 1fr;
+}
+dialog.allocation-editor {
+  width: min(680px, calc(100vw - 32px));
+  max-height: 85vh;
+  margin: auto;
+  padding: 24px;
+  color: #233c31;
+}
+dialog.allocation-editor::backdrop {
+  background: #16332577;
+}
+dialog.allocation-editor h3 {
+  margin: 12px 0;
+}
+.allocation-editor input,
+.allocation-editor select,
+.allocation-editor textarea {
+  max-width: 100%;
+}
+.allocation-date-row {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.allocation-history {
+  font-size: 12px;
+}
+.allocation-history dd {
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+.allocation-responsibility {
+  display: grid;
+  gap: 5px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e2e8e5;
+}
+@media (max-width: 900px) {
+  .allocation-days {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .allocation-table {
+    min-width: 760px;
+  }
+}

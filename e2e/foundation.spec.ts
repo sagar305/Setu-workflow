@@ -1,0 +1,137 @@
+import { test, expect } from '@playwright/test';
+import { readdir, readFile, mkdir } from 'node:fs/promises';
+test('protected routes redirect unauthenticated visitors', async ({ page, request }) => {
+  for (const route of ['/dashboard', '/admin/users', '/clients', '/profile']) { await page.goto(route); await expect(page).toHaveURL(/\/login$/); }
+  expect((await request.get('/api/admin/users')).status()).toBe(401);
+});
+test('administrator can log in, navigate, update settings and log out', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('admin@demo.setu.test');
+  await page.getByLabel('Password', { exact: true }).fill(process.env.SEED_PASSWORD!);
+  await page.getByRole('button', { name: 'Log in to your workspace' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole('heading', { name: 'Welcome, Alex.' })).toBeVisible();
+  await mkdir('.local/ui', { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 1050 });
+  await page.screenshot({ path: '.local/ui/dashboard.png', fullPage: true });
+  await page.getByRole('link', { name: 'Admin', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Users', exact: true })).toBeVisible();
+  await expect(page.getByText('admin@sample.setu.test')).toHaveCount(0);
+  await page.screenshot({ path: '.local/ui/users.png', fullPage: true });
+  await page.getByRole('link', { name: 'Offices', exact: true }).click();
+  await expect(page.getByText('Dallas Office', { exact: true }).last()).toBeVisible();
+  await page.getByRole('link', { name: 'Roles', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Create role' })).toBeVisible();
+  await page.getByRole('link', { name: 'Firm Settings' }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('status')).toHaveText('Firm settings saved.');
+  await page.getByRole('button', { name: 'Log out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto('/dashboard'); await expect(page).toHaveURL(/\/login$/);
+});
+test('ordinary users have no admin navigation and cannot call administrative APIs', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('associate@demo.setu.test');
+  await page.getByLabel('Password', { exact: true }).fill(process.env.SEED_PASSWORD!);
+  await page.getByRole('button', { name: 'Log in to your workspace' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole('link', { name: 'Admin', exact: true })).toHaveCount(0);
+  expect((await page.request.get('/api/admin/users')).status()).toBe(403);
+  await page.goto('/admin/users'); await expect(page.getByRole('heading', { name: 'Access restricted' })).toBeVisible();
+});
+test('cross-origin mutations are rejected', async ({ request }) => {
+  expect((await request.post('/api/auth/login', { headers: { Origin: 'https://attacker.invalid' }, data: { email: 'admin@demo.setu.test', password: process.env.SEED_PASSWORD } })).status()).toBe(403);
+});
+
+test('office, custom role, invitation, reset, deactivation and reactivation work end to end', async ({ page, browser }) => {
+  const suffix = Date.now().toString();
+  const address = `browser-${suffix}@demo.setu.test`;
+  const password = `Browser-test-${suffix}!`;
+  const origin = process.env.APP_URL!;
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('admin@demo.setu.test');
+  await page.getByLabel('Password', { exact: true }).fill(process.env.SEED_PASSWORD!);
+  await page.getByRole('button', { name: 'Log in to your workspace' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto('/admin/offices');
+  await page.getByRole('button', { name: 'Add office' }).click();
+  await page.getByLabel('Office name', { exact: true }).fill(`Test office ${suffix}`);
+  await page.getByLabel('City', { exact: true }).fill('Austin');
+  await page.getByLabel('State / region').fill('TX');
+  await page.getByLabel('Country', { exact: true }).fill('United States');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByText('Office saved.', { exact: true })).toBeVisible();
+  await page.goto('/admin/roles');
+  await page.getByRole('button', { name: 'Create role' }).click();
+  await page.getByLabel('Role name').fill(`Test role ${suffix}`);
+  await page.getByLabel('Assigned work visibility (future modules)').check();
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByText('Role saved.', { exact: true })).toBeVisible();
+  await page.goto('/admin/users');
+  await page.getByRole('button', { name: 'Invite user' }).click();
+  await page.getByLabel('First name', { exact: true }).fill('Browser');
+  await page.getByLabel('Last name', { exact: true }).fill(suffix);
+  await page.getByLabel('Email address').fill(address);
+  await page.getByLabel('Role', { exact: true }).selectOption({ label: `Test role ${suffix}` });
+  await page.getByLabel('Primary office', { exact: true }).selectOption({ label: `Test office ${suffix}` });
+  await page.getByRole('button', { name: 'Send invitation' }).click();
+  await expect(page.getByText(/Invitation sent/)).toBeVisible();
+  const mailLink = async (kind: 'invite' | 'reset') => {
+    for (const file of (await readdir('.local/mail')).sort().reverse()) {
+      const content = await readFile(`.local/mail/${file}`, 'utf8');
+      if (content.includes(`To: ${address}\n`) && content.includes(`/${kind}#token=`)) return content.match(/https?:\/\/\S+/)![0];
+    }
+    throw new Error('Development email was not written.');
+  };
+  const context = await browser.newContext();
+  const employee = await context.newPage();
+  await employee.goto(await mailLink('invite'));
+  await expect(employee.getByText('Demo CPA Firm', { exact: true })).toBeVisible();
+  await employee.getByLabel('New password', { exact: false }).fill(password);
+  await employee.getByLabel('Confirm password', { exact: true }).fill(password);
+  await employee.getByRole('button', { name: 'Set password' }).click();
+  await expect(employee.getByRole('status')).toHaveText('Password saved. You can now log in.');
+  await employee.goto('/login');
+  await employee.getByLabel('Email address').fill(address);
+  await employee.getByLabel('Password', { exact: true }).fill(password);
+  await employee.getByRole('button', { name: 'Log in to your workspace' }).click();
+  await expect(employee).toHaveURL(/\/dashboard$/);
+  const listed = await page.request.get('/api/admin/users');
+  const record = (await listed.json()).find((u: { email: string }) => u.email === address);
+  const edit = { ...record, status: 'Inactive' };
+  expect((await page.request.post(`/api/admin/users/${record.id}`, { headers: { Origin: origin }, data: edit })).ok()).toBe(true);
+  await employee.goto('/dashboard'); await expect(employee).toHaveURL(/\/login$/);
+  expect((await page.request.post(`/api/admin/users/${record.id}`, { headers: { Origin: origin }, data: { ...edit, status: 'Active' } })).ok()).toBe(true);
+  await employee.goto('/forgot');
+  await employee.getByLabel('Email address').fill(address);
+  await employee.getByRole('button', { name: 'Send reset link' }).click();
+  await expect(employee.getByRole('status')).toContainText('If this email is eligible');
+  await employee.goto(await mailLink('reset'));
+  await employee.getByLabel('New password', { exact: false }).fill(password + 'new');
+  await employee.getByLabel('Confirm password', { exact: true }).fill(password + 'new');
+  await employee.getByRole('button', { name: 'Set password' }).click();
+  await expect(employee.getByRole('status')).toContainText('Password saved');
+  await employee.goto('/login');
+  await employee.getByLabel('Email address').fill(address);
+  await employee.getByLabel('Password', { exact: true }).fill(password + 'new');
+  await employee.getByRole('button', { name: 'Log in to your workspace' }).click();
+  await expect(employee).toHaveURL(/\/dashboard$/);
+  await context.close();
+  // Leave the test employee and custom role inactive; preserve audit history.
+  await page.request.post(`/api/admin/users/${record.id}`, { headers: { Origin: origin }, data: edit });
+  await page.request.post(`/api/admin/roles/${record.roleId}`, { headers: { Origin: origin }, data: { roleName: `Test role ${suffix}`, description: '', permissions: ['visibility.assigned'], active: false } });
+  await page.request.post(`/api/admin/offices/${record.primaryOfficeId}`, { headers: { Origin: origin }, data: { officeName: `Test office ${suffix}`, city: 'Austin', state: 'TX', country: 'United States', timezone: null, active: false } });
+});
+test('mobile shell remains usable without viewport overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('partner@demo.setu.test');
+  await page.getByLabel('Password', { exact: true }).fill(process.env.SEED_PASSWORD!);
+  await page.getByRole('button', { name: 'Log in to your workspace' }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Toggle navigation' }).click();
+  await page.getByRole('link', { name: 'My Work', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'My Work', exact: true })).toBeVisible();
+  await page.screenshot({ path: '.local/ui/mobile.png', fullPage: true });
+});
