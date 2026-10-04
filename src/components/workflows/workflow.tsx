@@ -253,6 +253,14 @@ export function WorkflowPanel({
       {action && (
         <section className="card detail-card">
           <h2>{action === "Forward" ? "Move to Next Stage" : action}</h2>
+          <p className="notice">
+            Current stage checklist: {w.checklistProgress.requiredCompleted}{" "}
+            required completed · {w.checklistProgress.requiredOutstanding}{" "}
+            required outstanding · {w.checklistProgress.blocked} blocked.{" "}
+            <Link href={`/engagements/${record.id}?tab=checklist`}>
+              Review checklist
+            </Link>
+          </p>
           <MutationForm
             key={action + targetId}
             endpoint={`/api/workflows/${record.id}/transition`}
@@ -334,6 +342,12 @@ export function WorkflowPanel({
                 required={["Return", "Skip", "Reopen"].includes(action)}
               />
             </Field>
+            {["Forward", "Skip", "Complete"].includes(action) &&
+              permissions.includes("checklist.override_required") && (
+                <Field label="Required checklist override reason (only if needed)">
+                  <textarea name="checklistOverrideReason" maxLength={2000} />
+                </Field>
+              )}
             <button
               type="button"
               className="text-button"

@@ -1,4 +1,5 @@
 "use client";
+import { ChecklistDefinitions } from "./checklist-definitions";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +14,7 @@ type Template = Serialized<Awaited<ReturnType<typeof getTemplate>>>;
 type Stage = z.infer<typeof templateInput>["stages"][number];
 const emptyStage = (name = ""): Stage => ({
   name,
+  checklistItems: [],
   description: "",
   category: "Other",
   defaultOwnerType: "Manual",
@@ -35,7 +37,14 @@ export function TemplateEditor({
 }) {
   const router = useRouter(),
     [stages, setStages] = useState<Stage[]>(
-      record?.stages ?? [
+      record?.stages.map((s) => ({
+        ...s,
+        checklistItems: s.checklistItems.map((i) => ({
+          ...i,
+          defaultOwnerType:
+            i.defaultOwnerType as Stage["checklistItems"][number]["defaultOwnerType"],
+        })),
+      })) ?? [
         { ...emptyStage("Assigned"), isStart: true, category: "Queue" },
         {
           ...emptyStage("Complete"),
@@ -291,6 +300,21 @@ export function TemplateEditor({
                     </div>
                   )}
                 </div>
+                {permissions.includes("checklist_templates.view") && (
+                  <ChecklistDefinitions
+                    items={s.checklistItems}
+                    users={options.users}
+                    editable={
+                      editable &&
+                      permissions.includes(
+                        record
+                          ? "checklist_templates.edit"
+                          : "checklist_templates.create",
+                      )
+                    }
+                    onChange={(items) => update(i, { checklistItems: items })}
+                  />
+                )}
                 <div className="form-grid">
                   <Field label={`Stage ${i + 1} Name *`}>
                     <input

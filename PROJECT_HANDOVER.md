@@ -1,5 +1,7 @@
 # Setu Workflow — project handover
 
+**4 October 2026 update:** Build #6 extends this repository with the Checklist Engine. The original Builds #1–#5 working directory was saved in Git checkpoint `a31066e`. The earlier untracked-file warning below is historical. Read `BUILD6.md` and `BUILD6-VERIFICATION.md` for the current implementation, migration, evidence-storage limitation and actual verification results before using the older assessment below. Build #7 has not been started.
+
 Assessed from the local repository on 3 October 2026. This document is a starting point for a fresh conversation; previous chat history is not required.
 
 ## Workspace and assessment scope

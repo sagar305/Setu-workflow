@@ -1,3 +1,5 @@
+import { ChecklistPanel } from "@/components/checklists/panel";
+import { getChecklist } from "@/lib/checklists";
 import { AllocationWorkspace } from "@/components/allocations/workspace";
 import { engagementPage, engagementPageRecord } from "@/lib/engagement-page";
 import { serialize } from "@/lib/client-page";
@@ -16,7 +18,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ engagementId: string }>;
-  searchParams: Promise<Record<string,string>>;
+  searchParams: Promise<Record<string, string>>;
 }) {
   const { token, rights } = await engagementPage();
   const actor = await currentUser();
@@ -24,6 +26,7 @@ export default async function Page({
   const query = await searchParams;
   const tab = [
     "overview",
+    ...(rights.checklist ? ["checklist"] : []),
     "team",
     "activity",
     ...(rights.allocations ? ["assignments"] : []),
@@ -45,6 +48,8 @@ export default async function Page({
     tab === "workflow" && !w && hasPermission(actor, "workflows.apply")
       ? await compatibleTemplates(token, engagementId)
       : [];
+  const checklist =
+    tab === "checklist" ? await getChecklist(token, engagementId) : null;
   return (
     <EngagementDetail
       key={engagementId + tab + record.version}
@@ -52,8 +57,20 @@ export default async function Page({
       options={options}
       rights={rights}
       tab={tab}
+      checklist={
+        checklist ? (
+          <ChecklistPanel
+            data={serialize(checklist)}
+            engagementId={engagementId}
+          />
+        ) : undefined
+      }
       activity={activity ? serialize(activity) : undefined}
-      allocations={tab === "assignments" ? <AllocationWorkspace engagementId={engagementId} query={query}/> : undefined}
+      allocations={
+        tab === "assignments" ? (
+          <AllocationWorkspace engagementId={engagementId} query={query} />
+        ) : undefined
+      }
       workflow={
         tab === "workflow" ? (
           <WorkflowPanel

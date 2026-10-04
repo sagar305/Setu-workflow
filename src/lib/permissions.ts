@@ -1,4 +1,17 @@
 export const PERMISSIONS = {
+  "checklist.view": "checklist view",
+  "checklist.create": "checklist create",
+  "checklist.edit": "checklist edit",
+  "checklist.assign": "checklist assign",
+  "checklist.update_status": "checklist update status",
+  "checklist.complete": "checklist complete",
+  "checklist.reopen": "checklist reopen",
+  "checklist.override_required": "checklist override required",
+  "checklist.comment": "checklist comment",
+  "checklist.attach": "checklist attach",
+  "checklist_templates.view": "checklist templates view",
+  "checklist_templates.create": "checklist templates create",
+  "checklist_templates.edit": "checklist templates edit",
   "allocations.view": "View own allocations",
   "allocations.create": "Allocate work on managed engagements",
   "allocations.edit": "Edit managed allocations",
@@ -177,3 +190,33 @@ export const DEFAULT_ROLES: {
     ],
   },
 ];
+
+for (const role of DEFAULT_ROLES) {
+  const keys: PermissionKey[] = [
+    "checklist.view",
+    "checklist.create",
+    "checklist.edit",
+    "checklist.assign",
+    "checklist.update_status",
+    "checklist.complete",
+    "checklist.reopen",
+    "checklist.override_required",
+    "checklist.comment",
+    "checklist.attach",
+    "checklist_templates.view",
+    "checklist_templates.create",
+    "checklist_templates.edit",
+  ];
+  const grants = ["Firm Admin", "Partner", "Manager"].includes(role.name)
+    ? keys
+    : keys.filter((k) =>
+        [
+          "checklist.view",
+          "checklist.update_status",
+          "checklist.complete",
+          "checklist.comment",
+          "checklist.attach",
+        ].includes(k),
+      );
+  role.permissions = [...new Set([...role.permissions, ...grants])];
+}

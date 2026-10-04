@@ -1,3 +1,4 @@
+import { checklistGet, checklistPost } from "@/lib/checklist-api";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
@@ -71,8 +72,17 @@ export async function GET(req: NextRequest, context: Context) {
   try {
     const path = (await context.params).path;
     const token = req.cookies.get(cookieName)?.value;
-    if (path[0] === "allocations") return await allocationGet(token, path, req.nextUrl.searchParams);
-    if (path[0] === "my-work" && path.length === 1) return NextResponse.json(await listAllocations(token, Object.fromEntries(req.nextUrl.searchParams)));
+    if (path[0] === "checklists")
+      return await checklistGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "allocations")
+      return await allocationGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "my-work" && path.length === 1)
+      return NextResponse.json(
+        await listAllocations(
+          token,
+          Object.fromEntries(req.nextUrl.searchParams),
+        ),
+      );
     if (["templates", "workflows", "my-work"].includes(path[0]))
       return await workflowGet(token, path, req.nextUrl.searchParams);
     if (path[0] === "clients")
@@ -122,7 +132,9 @@ export async function POST(req: NextRequest, context: Context) {
     const bodyLimit =
       isClientImport || isEngagementImport
         ? 2_000_000
-        : ["clients", "engagements", "templates", "allocations"].includes(path[0])
+        : ["clients", "engagements", "templates", "allocations"].includes(
+              path[0],
+            )
           ? 512_000
           : 16_384;
     // Read a bounded stream; Content-Length alone is attacker-controlled.
@@ -153,7 +165,9 @@ export async function POST(req: NextRequest, context: Context) {
     );
     const route = path.join("/");
     const token = req.cookies.get(cookieName)?.value;
-    if (path[0] === "allocations") return await allocationPost(token, path, data);
+    if (path[0] === "checklists") return await checklistPost(token, path, data);
+    if (path[0] === "allocations")
+      return await allocationPost(token, path, data);
     if (["templates", "workflows"].includes(path[0]))
       return await workflowPost(token, path, data);
     if (path[0] === "clients") return await clientPost(token, path, data);

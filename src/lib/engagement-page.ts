@@ -17,7 +17,10 @@ export async function engagementPage(
     token: await sessionToken(),
     userId: user.id,
     rights: {
-      allocations: hasPermission(user, "allocations.view") && hasPermission(user, "my_work.view"),
+      checklist: hasPermission(user, "checklist.view"),
+      allocations:
+        hasPermission(user, "allocations.view") &&
+        hasPermission(user, "my_work.view"),
       workflowApply:
         hasPermission(user, "workflows.apply") &&
         hasPermission(user, "workflows.start"),

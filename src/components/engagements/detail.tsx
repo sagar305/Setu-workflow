@@ -37,6 +37,7 @@ export function EngagementDetail({
   activity,
   workflow,
   allocations,
+  checklist,
 }: {
   record: EngagementRecord;
   options: EngagementOptions;
@@ -45,6 +46,7 @@ export function EngagementDetail({
   activity?: EngagementActivity;
   workflow?: React.ReactNode;
   allocations?: React.ReactNode;
+  checklist?: React.ReactNode;
 }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [status, setStatus] = useState(r.status);
@@ -154,6 +156,7 @@ export function EngagementDetail({
       <nav className="tabs client-tabs" aria-label="Engagement details">
         {[
           "overview",
+          ...(rights.checklist ? ["checklist"] : []),
           "team",
           "activity",
           ...(rights.allocations ? ["assignments"] : []),
@@ -167,13 +170,14 @@ export function EngagementDetail({
             {t[0].toUpperCase() + t.slice(1)}
           </Link>
         ))}
-        {["Checklist", "Queries", "Deliverables", "Time"].map((t) => (
+        {["Queries", "Deliverables", "Time"].map((t) => (
           <button key={t} disabled>
             {t}
           </button>
         ))}
       </nav>
       {tab === "workflow" && workflow}
+      {tab === "checklist" && checklist}
       {tab === "overview" && (
         <div className="client-overview-grid">
           <section className="card detail-card">
@@ -395,7 +399,7 @@ export function EngagementDetail({
       )}
       {tab === "assignments" && allocations}
       <p className="muted small below-table">
-        Checklist, Queries, Deliverables, and Time are not available yet.
+        Queries, Deliverables, and Time are not available yet.
       </p>
     </>
   );

@@ -1,4 +1,5 @@
 import { seedDemoAllocations } from "./seed-allocations";
+import { seedDemoChecklists } from "./seed-checklists";
 import 'dotenv/config';
 import { db } from '../src/lib/db';
 import { provisionFirm } from '../src/lib/provision';
@@ -30,5 +31,6 @@ async function main() {
   await seedDemoEngagements();
   await seedDemoWorkflows();
   await seedDemoAllocations();
+  await seedDemoChecklists();
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => db.$disconnect());

@@ -1,3 +1,5 @@
+import { checklistOwner } from "./checklists";
+import { checklistProgress } from "./checklist-validation";
 import { z } from "zod";
 import type {
   Engagement,
@@ -19,7 +21,11 @@ import {
   engagementVisibility,
   engagementEvent,
 } from "./engagements";
-import { findTemplate, templateInclude } from "./workflow-templates";
+import {
+  findTemplate,
+  templateInclude,
+  visibleTemplateChecklist,
+} from "./workflow-templates";
 import { invariant } from "./errors";
 import { id } from "./validation";
 import { transitionInput } from "./workflow-validation";
@@ -47,7 +53,7 @@ export async function compatibleTemplates(
 ) {
   const actor = await engagementActor(token, "workflows.apply");
   const e = await findEngagement(db, actor, engagementId);
-  return db.workflowTemplate.findMany({
+  const templates = await db.workflowTemplate.findMany({
     where: {
       firmId: actor.firmId,
       status: "Published",
@@ -61,6 +67,7 @@ export async function compatibleTemplates(
     include: templateInclude,
     orderBy: [{ name: "asc" }, { versionNumber: "desc" }],
   });
+  return templates.map((t) => visibleTemplateChecklist(actor, t));
 }
 export async function getWorkflow(
   token: string | undefined,
@@ -78,6 +85,13 @@ export async function getWorkflow(
         include: { assignedUser: workflowPerson },
       },
       ...workflowSummaryInclude,
+      checklistItems: {
+        select: {
+          status: true,
+          isRequired: true,
+          engagementWorkflowStageId: true,
+        },
+      },
     },
   });
   if (!workflow) return null;
@@ -105,6 +119,11 @@ export async function getWorkflow(
   ]);
   return {
     ...workflow,
+    checklistProgress: checklistProgress(
+      workflow.checklistItems.filter(
+        (i) => i.engagementWorkflowStageId === workflow.currentStageId,
+      ),
+    ),
     movements,
     total,
     visits,
@@ -289,8 +308,8 @@ export async function applyWorkflowInTransaction(
       startedAt: now,
     },
   });
-  for (const s of definitions)
-    await tx.engagementWorkflowStage.create({
+  for (const s of definitions) {
+    const runtimeStage = await tx.engagementWorkflowStage.create({
       data: {
         firmId: actor.firmId,
         engagementWorkflowId: workflow.id,
@@ -308,6 +327,58 @@ export async function applyWorkflowInTransaction(
         isCompletion: s.isCompletion,
       },
     });
+    for (const item of s.checklistItems.filter((i) => i.active)) {
+      const slots = {
+        Preparer: e.preparerId,
+        Reviewer: e.reviewerId,
+        Manager: e.managerId,
+        Partner: e.partnerId,
+      };
+      const candidate =
+        item.defaultOwnerType === "StageOwner"
+          ? defaultOwner(e, runtimeStage)
+          : item.defaultOwnerType === "SpecificUser"
+            ? item.specificUserId
+            : (slots[item.defaultOwnerType as keyof typeof slots] ?? null);
+      const assignedUserId = await checklistOwner(tx, actor, e.id, candidate);
+      const dueDate =
+        item.relativeDueDays === null
+          ? null
+          : new Date(firmDates(actor.firm.timezone, now).today);
+      if (dueDate)
+        dueDate.setUTCDate(dueDate.getUTCDate() + item.relativeDueDays!);
+      const created = await tx.engagementChecklistItem.create({
+        data: {
+          firmId: actor.firmId,
+          engagementId: e.id,
+          engagementWorkflowId: workflow.id,
+          engagementWorkflowStageId: runtimeStage.id,
+          sourceTemplateChecklistItemId: item.id,
+          itemCode: item.itemCode,
+          itemTitle: item.itemTitle,
+          description: item.description,
+          instructionsSnapshot: item.instructions,
+          sequence: item.sequence,
+          estimatedHours: item.estimatedHours,
+          isRequired: item.isRequired,
+          evidenceRequired: item.evidenceRequired,
+          assignedUserId,
+          dueDate,
+          createdByUserId: actor.id,
+          updatedByUserId: actor.id,
+        },
+      });
+      await audit(
+        tx,
+        actor.firmId,
+        actor.id,
+        "checklist.created",
+        "EngagementChecklistItem",
+        created.id,
+        { sourceId: item.id, assignedUserId, instructions: item.instructions },
+      );
+    }
+  }
   const start = await tx.engagementWorkflowStage.findFirstOrThrow({
     where: {
       firmId: actor.firmId,
@@ -479,6 +550,45 @@ export async function transitionWorkflowInTransaction(
       ),
       "Complete all required stages before completing the workflow.",
     );
+  }
+  if (["Forward", "Skip", "Complete"].includes(data.action)) {
+    const items = await tx.engagementChecklistItem.findMany({
+      where: {
+        firmId: actor.firmId,
+        engagementWorkflowId: w.id,
+        ...(data.action === "Complete"
+          ? {}
+          : { engagementWorkflowStageId: current.id }),
+        isRequired: true,
+        status: { notIn: ["Completed", "NotApplicable"] },
+      },
+    });
+    if (items.length) {
+      invariant(
+        data.checklistOverrideReason.length > 0,
+        "Required checklist items are outstanding. Complete them or provide an authorized override reason.",
+      );
+      requirePermission(actor, "checklist.override_required");
+      invariant(
+        manager,
+        "Only an engagement workflow manager may override required items.",
+        403,
+      );
+      await audit(
+        tx,
+        actor.firmId,
+        actor.id,
+        "checklist.required_override",
+        "EngagementWorkflow",
+        w.id,
+        {
+          reason: data.checklistOverrideReason,
+          itemIds: items.map((i) => i.id),
+          stageId: current.id,
+          revision: w.revision,
+        },
+      );
+    }
   }
   if (data.action === "Reassign")
     invariant(data.assignedUserId !== undefined, "Select the new owner.");

@@ -1,4 +1,6 @@
-# Setu Workflow — Build 05: Assignment & My Work
+# Setu Workflow — Build 06: Checklist Engine
+
+Build #6 adds stage checklist definitions, independent engagement snapshots, ownership, completion/reopening history, comments, required-item workflow gates and a separate My Checklist Items queue. Tenant visibility, revision checks and AuditLog are reused. File uploads/downloads are explicitly unavailable until secure persistent storage is configured. See [Build #6 architecture and manual guide](BUILD6.md) and [Build #6 verification](BUILD6-VERIFICATION.md). The pre-build checkpoint is `a31066e`; Builds #1–#5 remain in this application.
 
 Build #5 adds dated planned work allocations, multi-date and multi-engagement previews, explicit reassignment and cancellation, audit history, budget acknowledgement, configured weekly capacity warnings, operational `/my-work`, and `/team/assignments`. Engagement detail has an Assignments tab. Planned hours remain separate from stage ownership and actual time. See [Build #5 architecture](BUILD5.md) and [Build #5 verification](BUILD5-VERIFICATION.md). Builds #1–#4 documentation is preserved below.
 

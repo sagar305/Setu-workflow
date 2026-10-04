@@ -1,3 +1,4 @@
+import { checklistDefinition } from "./checklist-validation";
 import { z } from "zod";
 import { id } from "./validation";
 import { nullableId } from "./engagement-validation";
@@ -19,6 +20,7 @@ export const CATEGORIES = [
   "Other",
 ] as const;
 export const stageInput = z.object({
+  checklistItems: z.array(checklistDefinition).max(100).default([]),
   name: z.string().trim().min(1).max(150),
   description: z.string().trim().max(2000).default(""),
   category: z.enum(CATEGORIES).default("Other"),
@@ -43,6 +45,7 @@ export const templateInput = z.object({
   revision: z.number().int().positive().optional(),
 });
 export const transitionInput = z.object({
+  checklistOverrideReason: z.string().trim().max(2000).default(""),
   revision: z.number().int().positive(),
   currentStageId: id,
   action: z.enum([

@@ -60,6 +60,13 @@ model Office {
   @@map("offices")
 }
 model User {
+  templateChecklistOwners WorkflowTemplateChecklistItem[]
+  checklistAssigned EngagementChecklistItem[] @relation("ChecklistOwner")
+  checklistCompleted EngagementChecklistItem[] @relation("ChecklistCompleter")
+  checklistCreated EngagementChecklistItem[] @relation("ChecklistCreator")
+  checklistUpdated EngagementChecklistItem[] @relation("ChecklistUpdater")
+  checklistComments ChecklistComment[]
+  checklistAttachments ChecklistAttachment[]
   workAllocations WorkAllocation[] @relation("AllocationEmployee")
   allocatedWork WorkAllocation[] @relation("AllocationCreator")
   createdTemplates WorkflowTemplate[]
@@ -432,6 +439,7 @@ model EngagementType {
   @@map("engagement_types")
 }
 model Engagement {
+  checklistItems EngagementChecklistItem[]
   workAllocations WorkAllocation[]
   workflow EngagementWorkflow?
   id String @id @default(uuid()) @db.Uuid
@@ -646,6 +654,7 @@ model WorkflowTemplate {
   @@map("workflow_templates")
 }
 model WorkflowTemplateStage {
+  checklistItems WorkflowTemplateChecklistItem[]
   id String @id @default(uuid()) @db.Uuid
   firmId String @db.Uuid @map("firm_id")
   workflowTemplateId String @db.Uuid @map("workflow_template_id")
@@ -671,6 +680,7 @@ model WorkflowTemplateStage {
   @@map("workflow_template_stages")
 }
 model EngagementWorkflow {
+  checklistItems EngagementChecklistItem[]
   workAllocations WorkAllocation[]
   id String @id @default(uuid()) @db.Uuid
   firmId String @db.Uuid @map("firm_id")
@@ -699,6 +709,7 @@ model EngagementWorkflow {
   @@map("engagement_workflows")
 }
 model EngagementWorkflowStage {
+  checklistItems EngagementChecklistItem[]
   workAllocations WorkAllocation[]
   id String @id @default(uuid()) @db.Uuid
   firmId String @db.Uuid @map("firm_id")
@@ -819,4 +830,111 @@ model StageVisit {
   @@index([firmId, engagementWorkflowId, enteredAt])
   @@index([firmId, engagementWorkflowStageId, enteredAt])
   @@map("stage_visits")
+}
+
+enum ChecklistStatus {
+  NotStarted
+  InProgress
+  Blocked
+  Completed
+  NotApplicable
+}
+model WorkflowTemplateChecklistItem {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  workflowTemplateStageId String @db.Uuid @map("workflow_template_stage_id")
+  stage WorkflowTemplateStage @relation(fields: [firmId, workflowTemplateStageId], references: [firmId, id], onDelete: Cascade)
+  itemCode String @default("") @map("item_code")
+  itemTitle String @default("") @map("item_title")
+  description String @default("") @map("description")
+  instructions String @default("") @map("instructions")
+  sequence Int
+  estimatedHours Float? @map("estimated_hours")
+  isRequired Boolean @default(true) @map("is_required")
+  evidenceRequired Boolean @default(false) @map("evidence_required")
+  defaultOwnerType String @default("StageOwner") @map("default_owner_type")
+  specificUserId String? @db.Uuid @map("specific_user_id")
+  specificUser User? @relation(fields: [firmId, specificUserId], references: [firmId, id])
+  relativeDueDays Int? @map("relative_due_days")
+  active Boolean @default(true)
+  snapshots EngagementChecklistItem[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([firmId, id])
+  @@unique([firmId, workflowTemplateStageId, sequence])
+  @@map("workflow_template_checklist_items")
+}
+model EngagementChecklistItem {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementId String @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields: [firmId, engagementId], references: [firmId, id])
+  engagementWorkflowId String @db.Uuid @map("engagement_workflow_id")
+  workflow EngagementWorkflow @relation(fields: [firmId, engagementId, engagementWorkflowId], references: [firmId, engagementId, id])
+  engagementWorkflowStageId String @db.Uuid @map("engagement_workflow_stage_id")
+  stage EngagementWorkflowStage @relation(fields: [firmId, engagementWorkflowId, engagementWorkflowStageId], references: [firmId, engagementWorkflowId, id])
+  sourceTemplateChecklistItemId String? @db.Uuid @map("source_template_checklist_item_id")
+  source WorkflowTemplateChecklistItem? @relation(fields: [firmId, sourceTemplateChecklistItemId], references: [firmId, id])
+  itemCode String @default("") @map("item_code")
+  itemTitle String @default("") @map("item_title")
+  description String @default("") @map("description")
+  instructionsSnapshot String @default("") @map("instructions_snapshot")
+  sequence Int
+  estimatedHours Float? @map("estimated_hours")
+  isRequired Boolean @default(true) @map("is_required")
+  evidenceRequired Boolean @default(false) @map("evidence_required")
+  assignedUserId String? @db.Uuid @map("assigned_user_id")
+  assignedUser User? @relation("ChecklistOwner", fields: [firmId, assignedUserId], references: [firmId, id])
+  dueDate DateTime? @db.Date @map("due_date")
+  status ChecklistStatus @default(NotStarted)
+  reason String @default("")
+  startedAt DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  completedByUserId String? @db.Uuid @map("completed_by_user_id")
+  completedBy User? @relation("ChecklistCompleter", fields: [firmId, completedByUserId], references: [firmId, id])
+  createdByUserId String @db.Uuid @map("created_by_user_id")
+  createdBy User @relation("ChecklistCreator", fields: [firmId, createdByUserId], references: [firmId, id])
+  updatedByUserId String @db.Uuid @map("updated_by_user_id")
+  updatedBy User @relation("ChecklistUpdater", fields: [firmId, updatedByUserId], references: [firmId, id])
+  revision Int @default(1)
+  comments ChecklistComment[]
+  attachments ChecklistAttachment[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([firmId, id])
+  @@unique([firmId, engagementWorkflowId, sourceTemplateChecklistItemId])
+  @@index([firmId, engagementId, engagementWorkflowStageId, sequence])
+  @@index([firmId, assignedUserId, status, dueDate])
+  @@map("engagement_checklist_items")
+}
+model ChecklistComment {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  checklistItemId String @db.Uuid @map("checklist_item_id")
+  item EngagementChecklistItem @relation(fields: [firmId, checklistItemId], references: [firmId, id])
+  authorUserId String @db.Uuid @map("author_user_id")
+  author User @relation(fields: [firmId, authorUserId], references: [firmId, id])
+  commentText String @map("comment_text")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([firmId, checklistItemId, createdAt])
+  @@map("checklist_comments")
+}
+model ChecklistAttachment {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  checklistItemId String @db.Uuid @map("checklist_item_id")
+  item EngagementChecklistItem @relation(fields: [firmId, checklistItemId], references: [firmId, id])
+  uploadedByUserId String @db.Uuid @map("uploaded_by_user_id")
+  uploadedBy User @relation(fields: [firmId, uploadedByUserId], references: [firmId, id])
+  fileName String @map("file_name")
+  mediaType String @map("media_type")
+  byteSize Int @map("byte_size")
+  storageKey String @unique @map("storage_key")
+  verifiedAt DateTime? @map("verified_at")
+  removedAt DateTime? @map("removed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([firmId, checklistItemId])
+  @@map("checklist_attachments")
 }

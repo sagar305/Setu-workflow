@@ -3,6 +3,7 @@ import { db } from "./db";
 import {
   principal,
   requirePermission,
+  hasPermission,
   tenantMutation,
   audit,
   type Database,
@@ -14,7 +15,10 @@ import { nullableId } from "./engagement-validation";
 import { normalizeName } from "./client-constants";
 import { templateInput } from "./workflow-validation";
 export const templateInclude = {
-  stages: { orderBy: { sequence: "asc" as const } },
+  stages: {
+    orderBy: { sequence: "asc" as const },
+    include: { checklistItems: { orderBy: { sequence: "asc" as const } } },
+  },
   serviceLine: true,
   engagementType: true,
 };
@@ -39,7 +43,18 @@ export async function getTemplate(
   token: string | undefined,
   templateId: string,
 ) {
-  return findTemplate(db, await templateActor(token), templateId);
+  const actor = await templateActor(token);
+  return visibleTemplateChecklist(
+    actor,
+    await findTemplate(db, actor, templateId),
+  );
+}
+export function visibleTemplateChecklist<
+  T extends { stages: { checklistItems: unknown[] }[] },
+>(actor: Principal, row: T): T {
+  return hasPermission(actor, "checklist_templates.view")
+    ? row
+    : { ...row, stages: row.stages.map((s) => ({ ...s, checklistItems: [] })) };
 }
 export async function listTemplates(
   token: string | undefined,
@@ -72,7 +87,11 @@ export async function listTemplates(
     }),
     db.workflowTemplate.count({ where }),
   ]);
-  return { items, total, filters: f };
+  return {
+    items: items.map((item) => visibleTemplateChecklist(actor, item)),
+    total,
+    filters: f,
+  };
 }
 export async function templateOptions(token: string | undefined) {
   const actor = await templateActor(token),
@@ -111,6 +130,26 @@ async function validateDefinition(
     );
   }
   for (const stage of data.stages) {
+    for (const item of stage.checklistItems) {
+      invariant(
+        item.defaultOwnerType === "SpecificUser"
+          ? !!item.specificUserId
+          : !item.specificUserId,
+        "Specific checklist ownership requires an employee; other defaults must not specify one.",
+      );
+      if (item.specificUserId)
+        invariant(
+          await tx.user.findFirst({
+            where: {
+              firmId: actor.firmId,
+              id: item.specificUserId,
+              status: "Active",
+              role: { active: true },
+            },
+          }),
+          "Choose an active checklist owner in your firm.",
+        );
+    }
     invariant(
       stage.defaultOwnerType === "SpecificUser"
         ? !!stage.specificUserId
@@ -176,6 +215,16 @@ export function saveTemplate(
         !before || before.status === "Draft",
         "Create a new draft version to edit a published or archived template.",
       );
+      if (
+        data.stages.some((s) => s.checklistItems.length) ||
+        before?.stages.some((s) => s.checklistItems.length)
+      ) {
+        requirePermission(actor, "checklist_templates.view");
+        requirePermission(
+          actor,
+          before ? "checklist_templates.edit" : "checklist_templates.create",
+        );
+      }
       await validateDefinition(tx, actor, data);
       const { stages, revision: _revision, ...info } = data;
       void _revision;
@@ -200,14 +249,25 @@ export function saveTemplate(
         await tx.workflowTemplateStage.deleteMany({
           where: { firmId: actor.firmId, workflowTemplateId: row.id },
         });
-      await tx.workflowTemplateStage.createMany({
-        data: stages.map((s, i) => ({
-          ...s,
-          firmId: actor.firmId,
-          workflowTemplateId: row.id,
-          sequence: (i + 1) * 10,
-        })),
-      });
+      for (const [i, definition] of stages.entries()) {
+        const { checklistItems, ...stage } = definition;
+        const saved = await tx.workflowTemplateStage.create({
+          data: {
+            ...stage,
+            firmId: actor.firmId,
+            workflowTemplateId: row.id,
+            sequence: (i + 1) * 10,
+          },
+        });
+        await tx.workflowTemplateChecklistItem.createMany({
+          data: checklistItems.map((item, j) => ({
+            ...item,
+            firmId: actor.firmId,
+            workflowTemplateStageId: saved.id,
+            sequence: (j + 1) * 10,
+          })),
+        });
+      }
       await audit(
         tx,
         actor.firmId,
@@ -215,6 +275,9 @@ export function saveTemplate(
         before ? "workflow_template.edited" : "workflow_template.created",
         "WorkflowTemplate",
         row.id,
+        JSON.parse(
+          JSON.stringify({ before: before?.stages ?? null, after: stages }),
+        ),
       );
       return { id: row.id, message: "Draft saved." };
     },
@@ -325,14 +388,33 @@ export function templateAction(
           : {}),
       },
     });
-    await tx.workflowTemplateStage.createMany({
-      data: source.stages.map((s) => ({
-        ...templateInput.shape.stages.element.parse(s),
-        firmId: actor.firmId,
-        workflowTemplateId: row.id,
-        sequence: s.sequence,
-      })),
-    });
+    if (source.stages.some((s) => s.checklistItems.length)) {
+      requirePermission(actor, "checklist_templates.view");
+      requirePermission(
+        actor,
+        versioning ? "checklist_templates.edit" : "checklist_templates.create",
+      );
+    }
+    for (const s of source.stages) {
+      const { checklistItems, ...stage } =
+        templateInput.shape.stages.element.parse(s);
+      const saved = await tx.workflowTemplateStage.create({
+        data: {
+          ...stage,
+          firmId: actor.firmId,
+          workflowTemplateId: row.id,
+          sequence: s.sequence,
+        },
+      });
+      await tx.workflowTemplateChecklistItem.createMany({
+        data: checklistItems.map((item, i) => ({
+          ...item,
+          firmId: actor.firmId,
+          workflowTemplateStageId: saved.id,
+          sequence: (i + 1) * 10,
+        })),
+      });
+    }
     await audit(
       tx,
       actor.firmId,
