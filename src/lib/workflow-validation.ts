@@ -45,6 +45,7 @@ export const templateInput = z.object({
   revision: z.number().int().positive().optional(),
 });
 export const transitionInput = z.object({
+  pointOverrideReason: z.string().trim().max(2000).default(""),
   checklistOverrideReason: z.string().trim().max(2000).default(""),
   revision: z.number().int().positive(),
   currentStageId: id,

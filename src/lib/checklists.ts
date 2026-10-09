@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "./db";
 import {
   audit,
+  hasPermission,
   requirePermission,
   type Database,
   type Principal,
@@ -157,7 +158,25 @@ export async function checklistDetail(
       orderBy: { timestamp: "asc" },
     }),
   ]);
-  return { comments, attachments, history, storageAvailable: false };
+  const relatedPoints = hasPermission(actor, "points.view")
+    ? await db.engagementPoint.findMany({
+        where: {
+          firmId: actor.firmId,
+          engagementId: item.engagementId,
+          checklistItemId: item.id,
+        },
+        select: { id: true, pointNumber: true, title: true, status: true },
+        orderBy: { pointSequence: "desc" },
+        take: 25,
+      })
+    : [];
+  return {
+    comments,
+    attachments,
+    history,
+    storageAvailable: false,
+    relatedPoints,
+  };
 }
 export function createChecklistItem(
   token: string | undefined,

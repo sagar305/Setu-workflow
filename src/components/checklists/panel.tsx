@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { MutationForm, Field } from "../form";
 import {
   CHECKLIST_STATUSES,
@@ -327,6 +328,35 @@ function ItemRow({
             <textarea name="commentText" required maxLength={8000} />
           </Field>
         </MutationForm>
+      )}
+      {permissions.includes("points.view") && (
+        <section>
+          <h4>Related points</h4>
+          {detail?.relatedPoints.map((p) => (
+            <p key={p.id}>
+              <Link href={`/engagements/${item.engagementId}/points/${p.id}`}>
+                {p.pointNumber}: {p.title}
+              </Link>{" "}
+              · {label(p.status)}
+            </p>
+          ))}
+          <Link
+            href={`/engagements/${item.engagementId}?tab=queries&checklistItemId=${item.id}`}
+          >
+            View all linked points
+          </Link>
+          {permissions.includes("points.create") &&
+            permissions.includes("points.assign") && (
+              <p>
+                <Link
+                  className="button secondary"
+                  href={`/engagements/${item.engagementId}/points/new?checklistItemId=${item.id}`}
+                >
+                  + Raise Point
+                </Link>
+              </p>
+            )}
+        </section>
       )}
       <h4>Attachments</h4>
       <p className="notice">

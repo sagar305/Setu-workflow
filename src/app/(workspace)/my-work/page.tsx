@@ -4,6 +4,7 @@ import { currentUser, sessionToken } from "@/lib/session";
 import { hasPermission } from "@/lib/auth";
 import { myChecklist } from "@/lib/checklists";
 import { notFound } from "next/navigation";
+import { MyPoints } from "@/components/points/workspace";
 export default async function Page({
   searchParams,
 }: {
@@ -20,10 +21,13 @@ export default async function Page({
         )
       : null;
   const allocations = hasPermission(actor, "allocations.view");
-  if (!allocations && !checklist) notFound();
+  const points =
+    hasPermission(actor, "points.view") && hasPermission(actor, "my_work.view");
+  if (!allocations && !checklist && !points) notFound();
   return (
     <>
       {allocations ? <AllocationWorkspace query={query} /> : <h1>My Work</h1>}
+      {points && <MyPoints query={query} />}
       {checklist && (
         <section className="card detail-card">
           <h2>My Checklist Items</h2>

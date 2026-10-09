@@ -1,3 +1,4 @@
+import { blockingPoints, guardBlockingPoints } from "./point-workflow";
 import { checklistOwner } from "./checklists";
 import { checklistProgress } from "./checklist-validation";
 import { z } from "zod";
@@ -95,6 +96,13 @@ export async function getWorkflow(
     },
   });
   if (!workflow) return null;
+  const blockers = await blockingPoints(
+    db,
+    actor.firmId,
+    e.id,
+    workflow.currentStageId,
+    workflow.currentStage?.isCompletion ?? false,
+  );
   const where = { firmId: actor.firmId, engagementWorkflowId: workflow.id };
   const [movements, total, visits, visitTotal] = await Promise.all([
     db.workflowMovement.findMany({
@@ -119,6 +127,8 @@ export async function getWorkflow(
   ]);
   return {
     ...workflow,
+    blockingPointCount: blockers.length,
+    blockingPoints: hasPermission(actor, "points.view") ? blockers : [],
     checklistProgress: checklistProgress(
       workflow.checklistItems.filter(
         (i) => i.engagementWorkflowStageId === workflow.currentStageId,
@@ -552,6 +562,17 @@ export async function transitionWorkflowInTransaction(
     );
   }
   if (["Forward", "Skip", "Complete"].includes(data.action)) {
+    await guardBlockingPoints(
+      tx,
+      actor,
+      e.id,
+      w.id,
+      current.id,
+      w.revision,
+      data.action === "Complete",
+      data.pointOverrideReason,
+      manager,
+    );
     const items = await tx.engagementChecklistItem.findMany({
       where: {
         firmId: actor.firmId,
@@ -675,7 +696,14 @@ export async function transitionWorkflowInTransaction(
       fromUserId: current.assignedUserId,
       toUserId: owner,
       movedByUserId: actor.id,
-      comment: data.comment,
+      comment: [
+        data.comment,
+        data.pointOverrideReason
+          ? "Blocking point override: " + data.pointOverrideReason
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
       movedAt: now,
       revision,
     },

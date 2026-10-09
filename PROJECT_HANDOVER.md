@@ -1,5 +1,7 @@
 # Setu Workflow — project handover
 
+**Build #7 update, 4 October 2026:** The unified Queries / Open Points Engine now extends Builds #1–#6. Read `BUILD7.md` and `BUILD7-VERIFICATION.md` first for current routes, lifecycle rules, workflow/checklist integration, security, migration and executed tests. Work started from clean checkpoint `3405afe` / `setu-build-6-checkpoint`. Persistent attachments remain unavailable. Build #8 has not been started. The older assessments below are historical.
+
 **4 October 2026 update:** Build #6 extends this repository with the Checklist Engine. The original Builds #1–#5 working directory was saved in Git checkpoint `a31066e`. The earlier untracked-file warning below is historical. Read `BUILD6.md` and `BUILD6-VERIFICATION.md` for the current implementation, migration, evidence-storage limitation and actual verification results before using the older assessment below. Build #7 has not been started.
 
 Assessed from the local repository on 3 October 2026. This document is a starting point for a fresh conversation; previous chat history is not required.
@@ -69,3 +71,9 @@ Read `BUILD2.md`, `BUILD3.md`, and `BUILD4.md` for module details as needed. Ear
 4. Preserve existing functionality, data, tenancy, configurable permissions, audit/history, and the design system. Extend rather than rebuild.
 5. Follow `AGENTS.md`: read relevant installed Next.js guidance under `node_modules/next/dist/docs/` before writing code.
 6. Keep verification proportional to approved changes. Do not install, migrate, run browser verification, or execute full suites without new authorization.
+
+Build #8: TimeEntry runtime model, submitted actuals, My Time, allocation quick entry and Budget & Hours are implemented. Migration 202610050001_time_entries is applied locally. See BUILD8.md for correction policy and BUILD8-VERIFICATION.md for targeted verification. Build #9 has not started.
+
+Build #9 adds /team/capacity and CapacityAdjustment while reusing existing weekly capacity, WorkAllocation, TimeEntry and assignment controls. See BUILD9.md for scope/calculation policy and BUILD9-VERIFICATION.md for targeted checks. Build #10 has not started.
+
+Build #10 is now implemented: /dashboard, /reports and scoped dashboard/report/export APIs. Local migration 202610060002_reports grants default management report capabilities. See BUILD10.md and BUILD10-VERIFICATION.md. Earlier statements that Builds #9/#10 have not started are historical. Stop at V1; no later build or full regression is authorized. Existing uncommitted work from preceding builds is preserved.

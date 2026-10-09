@@ -87,14 +87,16 @@ export const checklistAction = z.discriminatedUnion("action", [
   }),
 ]);
 export function checklistProgress(
-  items: { status: string; isRequired?: boolean }[],
+  items: { status: string; isRequired?: boolean; count?: number }[],
 ) {
+  const weight = (rows: typeof items) =>
+    rows.reduce((sum, row) => sum + (row.count ?? 1), 0);
   const count = (status: string) =>
-    items.filter((i) => i.status === status).length;
+    weight(items.filter((i) => i.status === status));
   const completed = count("Completed"),
-    applicable = items.length - count("NotApplicable");
+    applicable = weight(items) - count("NotApplicable");
   return {
-    total: items.length,
+    total: weight(items),
     applicable,
     completed,
     inProgress: count("InProgress"),
@@ -102,11 +104,14 @@ export function checklistProgress(
     notStarted: count("NotStarted"),
     notApplicable: count("NotApplicable"),
     percent: applicable ? Math.round((completed / applicable) * 100) : 0,
-    requiredCompleted: items.filter(
-      (i) => i.isRequired && i.status === "Completed",
-    ).length,
-    requiredOutstanding: items.filter(
-      (i) => i.isRequired && !["Completed", "NotApplicable"].includes(i.status),
-    ).length,
+    requiredCompleted: weight(
+      items.filter((i) => i.isRequired && i.status === "Completed"),
+    ),
+    requiredOutstanding: weight(
+      items.filter(
+        (i) =>
+          i.isRequired && !["Completed", "NotApplicable"].includes(i.status),
+      ),
+    ),
   };
 }

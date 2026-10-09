@@ -68,14 +68,17 @@ test("engagement list filters, search, columns, CSV export and responsive layout
   await expect(
     page.getByRole("heading", { name: "Engagements", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: /Due This Week/ })).toBeVisible();
-  await screenshot(page, "engagements");
+  await expect(page.getByRole("link", { name: "Due Soon" })).toBeVisible();
+  await expect(page.getByLabel("Service Line", { exact: true })).not.toBeVisible();
+  await page.getByText("Filters", { exact: true }).click();
+  await expect(page.getByLabel("Service Line", { exact: true })).toBeVisible();
+  await page.getByText("Filters", { exact: true }).click();
   await page.getByLabel("Search engagements", { exact: true }).fill("ABC001");
   await page.getByRole("button", { name: "Apply filters" }).click();
   await expect(page).toHaveURL(/q=ABC001/);
   await expect(page.locator('tbody tr').first()).toBeVisible();
   expect(await page.locator("tbody tr").count()).toBeGreaterThanOrEqual(3);
-  await page.getByText("Customize Columns", { exact: true }).click();
+  await page.getByText("Table options", { exact: true }).click();
   await page
     .getByRole("checkbox", { name: "Engagement Code", exact: true })
     .check();
@@ -95,7 +98,7 @@ test("engagement list filters, search, columns, CSV export and responsive layout
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await screenshot(page, "engagements-mobile");
+
 });
 test("create from Client, smart defaults, edit, complete/reopen, reassign and audit", async ({
   page,

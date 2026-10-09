@@ -1,4 +1,25 @@
 export const PERMISSIONS = {
+  "reports.view": "View operational reports within underlying record permissions",
+  "reports.export": "Export permitted operational reports to CSV",
+  "capacity.view_team": "View capacity of employees in your team scope",
+  "capacity.adjust": "Adjust capacity of employees in your team scope",
+  "time.view_own": "View own time",
+  "time.create": "Record own time",
+  "time.edit_own": "Edit and delete own draft time",
+  "time.submit": "Finalize own time",
+  "time.view_engagement": "View time on permitted engagements",
+  "time.correct": "Return submitted time to draft with an audited reason",
+  "budget.view": "View engagement budget and hours",
+  "points.view": "points view",
+  "points.create": "points create",
+  "points.reply": "points reply",
+  "points.assign": "points assign",
+  "points.edit": "points edit",
+  "points.resolve": "points resolve",
+  "points.reopen": "points reopen",
+  "points.close": "points close",
+  "points.override_blocking": "points override blocking",
+  "points.attach": "points attach",
   "checklist.view": "checklist view",
   "checklist.create": "checklist create",
   "checklist.edit": "checklist edit",
@@ -220,3 +241,37 @@ for (const role of DEFAULT_ROLES) {
       );
   role.permissions = [...new Set([...role.permissions, ...grants])];
 }
+
+for (const role of DEFAULT_ROLES) {
+  const grants: PermissionKey[] = [
+    "points.view",
+    "points.create",
+    "points.reply",
+    "points.assign",
+    "points.attach",
+  ];
+  if (
+    ["Firm Admin", "Partner", "Manager", "Senior / Reviewer"].includes(
+      role.name,
+    )
+  )
+    grants.push(
+      "points.edit",
+      "points.resolve",
+      "points.reopen",
+      "points.close",
+    );
+  if (["Firm Admin", "Partner", "Manager"].includes(role.name))
+    grants.push("points.override_blocking");
+  role.permissions = [...new Set([...role.permissions, ...grants])];
+}
+
+for (const role of DEFAULT_ROLES) {
+  const grants: PermissionKey[] = ["time.view_own", "time.create", "time.edit_own", "time.submit"];
+  if (role.permissions.includes("engagements.manage_budget")) grants.push("budget.view", "time.view_engagement", "time.correct");
+  role.permissions = [...new Set([...role.permissions, ...grants])];
+}
+
+for (const role of DEFAULT_ROLES) { if (role.permissions.includes("allocations.manage_team")) role.permissions = [...new Set([...role.permissions, "capacity.view_team", "capacity.adjust"])] as PermissionKey[]; }
+
+for (const role of DEFAULT_ROLES) { if (role.permissions.includes("allocations.manage_team")) role.permissions = [...new Set([...role.permissions, "reports.view", "reports.export"])] as PermissionKey[]; }

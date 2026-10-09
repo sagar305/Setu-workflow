@@ -1,5 +1,6 @@
 import { Prisma, type Engagement } from "@prisma/client";
 import { db } from "./db";
+import { dailyCapacity, capacityMetrics } from "./capacity-math";
 import {
   audit,
   hasPermission,
@@ -129,7 +130,7 @@ async function validated(
     e = await managedEngagement(tx, actor, data.engagementId);
   invariant(
     !["Completed", "Cancelled"].includes(e.status),
-    "Cannot allocate closed engagements.",
+    `${e.engagementName} is ${e.status.toLowerCase()}. Select an open engagement to allocate work.`,
   );
   const user = await validateEmployee(tx, actor, e, data.assignedUserId);
   const stage = data.engagementWorkflowStageId
@@ -169,7 +170,7 @@ async function warnings(
   const engagementIds = [...new Set(rows.map((r) => r.e.id))],
     userIds = [...new Set(rows.map((r) => r.user.id))];
   const weeks = rows.map((r) => firmDates("UTC", r.data.allocationDate));
-  const [budgets, capacities] = await Promise.all([
+  const [budgets, capacities, adjustments] = await Promise.all([
     tx.workAllocation.groupBy({
       by: ["engagementId"],
       where: {
@@ -199,6 +200,7 @@ async function warnings(
       },
       _sum: { allocatedHours: true },
     }),
+    tx.capacityAdjustment.findMany({ where: { firmId: actor.firmId, userId: { in: userIds }, cancelledAt: null, startDate: { lte: new Date(weeks.map(w => w.weekEnd).sort().at(-1)!) }, endDate: { gte: new Date(weeks.map(w => w.weekStart).sort()[0]) } } }),
   ]);
   const result: { kind: "budget" | "capacity"; message: string }[] = [];
   for (const eid of engagementIds) {
@@ -233,10 +235,12 @@ async function warnings(
       rows
         .filter((x) => x.user.id === r.user.id && inWeek(x.data.allocationDate))
         .reduce((s, x) => s + x.data.allocatedHours, 0);
-    if (total > r.user.weeklyCapacityHours)
+    const capacity = dailyCapacity(r.user.weeklyCapacityHours, w.weekStart, 7, adjustments.filter(a => a.userId === r.user.id)).reduce((s,d) => s.plus(d.capacity), new Prisma.Decimal(0));
+    const metrics = capacityMetrics(capacity, new Prisma.Decimal(total.toFixed(2)));
+    if (new Prisma.Decimal(total.toFixed(2)).gt(capacity))
       result.push({
         kind: "capacity",
-        message: `${r.user.firstName} ${r.user.lastName}, week ${w.weekStart}: Planned allocation exceeds configured weekly capacity (${total.toFixed(2)}h / ${r.user.weeklyCapacityHours}h).`,
+        message: `${r.user.firstName} ${r.user.lastName}, week ${w.weekStart}: This allocation would bring planned work to ${total.toFixed(2)}h against ${capacity.toFixed(2)}h adjusted capacity (${metrics.load === null ? "no available capacity" : metrics.load + "% planned load"}). You may continue.`,
       });
   }
   return result;
@@ -873,6 +877,7 @@ export async function allocationOptions(
           canSeeEngagement(u, e),
       )
       .map((u) => ({ id: u.id, name: `${u.firstName} ${u.lastName}` })),
+    engagement: { engagementName: e.engagementName, status: e.status },
     workflow,
   };
 }

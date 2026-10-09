@@ -38,6 +38,9 @@ export function EngagementDetail({
   workflow,
   allocations,
   checklist,
+  points,
+  pointSummary,
+  hours,
 }: {
   record: EngagementRecord;
   options: EngagementOptions;
@@ -47,6 +50,9 @@ export function EngagementDetail({
   workflow?: React.ReactNode;
   allocations?: React.ReactNode;
   checklist?: React.ReactNode;
+  points?: React.ReactNode;
+  pointSummary?: React.ReactNode;
+  hours?: React.ReactNode;
 }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [status, setStatus] = useState(r.status);
@@ -156,6 +162,8 @@ export function EngagementDetail({
       <nav className="tabs client-tabs" aria-label="Engagement details">
         {[
           "overview",
+          ...(rights.hours ? ["hours"] : []),
+          ...(rights.points ? ["queries"] : []),
           ...(rights.checklist ? ["checklist"] : []),
           "team",
           "activity",
@@ -167,17 +175,20 @@ export function EngagementDetail({
             className={tab === t ? "active" : ""}
             href={`/engagements/${r.id}?tab=${t}`}
           >
-            {t[0].toUpperCase() + t.slice(1)}
+            {t === "hours" ? "Budget & Hours" : t[0].toUpperCase() + t.slice(1)}
           </Link>
         ))}
-        {["Queries", "Deliverables", "Time"].map((t) => (
+        {["Deliverables"].map((t) => (
           <button key={t} disabled>
             {t}
           </button>
         ))}
       </nav>
+      {tab === "hours" && hours}
       {tab === "workflow" && workflow}
       {tab === "checklist" && checklist}
+      {tab === "queries" && points}
+      {tab === "overview" && pointSummary}
       {tab === "overview" && (
         <div className="client-overview-grid">
           <section className="card detail-card">
@@ -240,7 +251,7 @@ export function EngagementDetail({
             <Values
               values={{
                 "Budget Hours": r.budgetHours,
-                "Actual Hours": "Not available yet",
+                ...(rights.hours ? { "Budget & Hours": <Link href={`/engagements/${r.id}?tab=hours`}>View planned and actual hours</Link> } : {}),
               }}
             />
           </section>
@@ -399,7 +410,7 @@ export function EngagementDetail({
       )}
       {tab === "assignments" && allocations}
       <p className="muted small below-table">
-        Queries, Deliverables, and Time are not available yet.
+        Deliverables are not available yet.
       </p>
     </>
   );

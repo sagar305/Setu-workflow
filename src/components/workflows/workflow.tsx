@@ -253,6 +253,23 @@ export function WorkflowPanel({
       {action && (
         <section className="card detail-card">
           <h2>{action === "Forward" ? "Move to Next Stage" : action}</h2>
+          {w.blockingPointCount > 0 && (
+            <div className="notice error">
+              <p>
+                {w.blockingPointCount} unresolved blocking points must be
+                resolved or explicitly overridden.
+              </p>
+              <ul>
+                {w.blockingPoints.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/engagements/${record.id}/points/${p.id}`}>
+                      {p.pointNumber}: {p.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="notice">
             Current stage checklist: {w.checklistProgress.requiredCompleted}{" "}
             required completed · {w.checklistProgress.requiredOutstanding}{" "}
@@ -346,6 +363,12 @@ export function WorkflowPanel({
               permissions.includes("checklist.override_required") && (
                 <Field label="Required checklist override reason (only if needed)">
                   <textarea name="checklistOverrideReason" maxLength={2000} />
+                </Field>
+              )}
+            {["Forward", "Skip", "Complete"].includes(action) &&
+              permissions.includes("points.override_blocking") && (
+                <Field label="Blocking point override reason (only if needed)">
+                  <textarea name="pointOverrideReason" maxLength={2000} />
                 </Field>
               )}
             <button

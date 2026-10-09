@@ -17,6 +17,8 @@ export async function engagementPage(
     token: await sessionToken(),
     userId: user.id,
     rights: {
+      hours: hasPermission(user, "budget.view") || hasPermission(user, "time.view_engagement"),
+      points: hasPermission(user, "points.view"),
       checklist: hasPermission(user, "checklist.view"),
       allocations:
         hasPermission(user, "allocations.view") &&

@@ -1,3 +1,4 @@
+import { AddTime } from "@/components/time/entry";
 import Link from "next/link";
 import {
   listAllocations,
@@ -426,6 +427,7 @@ export async function AllocationWorkspace({
                     >
                       View Workflow
                     </Link>
+                    {row.assignedUserId === actor.id && row.status !== "Cancelled" && hasPermission(actor, "time.create") && <AddTime today={data.dates.today} initial={{ engagementId: row.engagementId, engagementWorkflowStageId: row.engagementWorkflowStageId, workAllocationId: row.id }} />}
                     <AllocationActions
                       key={row.id + row.revision}
                       row={serialize(row)}

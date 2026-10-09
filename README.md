@@ -1,4 +1,6 @@
-# Setu Workflow — Build 06: Checklist Engine
+# Setu Workflow — Build 07: Queries / Open Points
+
+Build #7 adds a unified Points Engine with questions, review points, instructions and internal issues; threaded replies; explicit resolution/reopening; calendar-day aging; workflow blocking/overrides; checklist links; overview counts; and Points Assigned to Me. Existing tenant visibility, audit history and planned-hour calculations are preserved. Persistent attachments remain explicitly unavailable. See [Build #7 guide](BUILD7.md) and [Build #7 verification](BUILD7-VERIFICATION.md). The clean pre-build checkpoint is `3405afe`, tagged `setu-build-6-checkpoint`.
 
 Build #6 adds stage checklist definitions, independent engagement snapshots, ownership, completion/reopening history, comments, required-item workflow gates and a separate My Checklist Items queue. Tenant visibility, revision checks and AuditLog are reused. File uploads/downloads are explicitly unavailable until secure persistent storage is configured. See [Build #6 architecture and manual guide](BUILD6.md) and [Build #6 verification](BUILD6-VERIFICATION.md). The pre-build checkpoint is `a31066e`; Builds #1–#5 remain in this application.
 
@@ -156,3 +158,9 @@ This is a foundation, not an independently certified production release. No bill
 Tenant isolation is application-enforced with composite foreign-key protection; PostgreSQL row-level security is not enabled. Never import raw Prisma into future routes to bypass the scoped services. Database credentials can access multiple tenants and must remain server-only. Database owners can change audit rows; append-only database grants/archival storage and retention policies belong in production hardening. SMTP is synchronous with explicit resend after failure; a durable encrypted outbox/retry worker is deferred. Expired sessions and limiter rows require scheduled cleanup in a deployed environment. Rate limiting is a baseline; internet-facing deployments should also have ingress abuse protection. A nonce-based Content Security Policy remains a deployment hardening task.
 
 For subsequent builds, keep tenant-scoped composite relations, check permissions in every server entry point, redact secrets from DTOs/audits, and add adversarial cross-tenant tests for every new resource. Do not build Clients, Engagements, Templates, Checklists, Queries, Budget/Actual Hours, or Team Capacity as part of Build 01.
+
+Build #8 adds My Time, quick allocation time entry and engagement Budget & Hours. See [BUILD8.md](BUILD8.md) and [BUILD8-VERIFICATION.md](BUILD8-VERIFICATION.md).
+
+Build #9 adds Team Capacity, dated capacity reductions and adjustment-aware allocation warnings. See [BUILD9.md](BUILD9.md) and [BUILD9-VERIFICATION.md](BUILD9-VERIFICATION.md).
+
+Build #10 completes the V1 Management Dashboard, My Day, deterministic attention rules and six operational CSV reports. See [BUILD10.md](BUILD10.md) and [BUILD10-VERIFICATION.md](BUILD10-VERIFICATION.md) for behavior, security and validation. Earlier build-status statements above are historical.

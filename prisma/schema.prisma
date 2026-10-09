@@ -16,6 +16,8 @@ enum UserStatus {
   Inactive
 }
 model Firm {
+  capacityAdjustments CapacityAdjustment[]
+  timeEntries TimeEntry[]
   workAllocations WorkAllocation[]
   workflowTemplates WorkflowTemplate[]
   id                          String @id @default(uuid()) @db.Uuid
@@ -60,6 +62,18 @@ model Office {
   @@map("offices")
 }
 model User {
+  capacityAdjustments CapacityAdjustment[] @relation("CapacityEmployee")
+  capacityCreated CapacityAdjustment[] @relation("CapacityCreator")
+  capacityUpdated CapacityAdjustment[] @relation("CapacityUpdater")
+  timeEntries TimeEntry[] @relation("TimeEmployee")
+  timeCreated TimeEntry[] @relation("TimeCreator")
+  timeUpdated TimeEntry[] @relation("TimeUpdater")
+  raisedPoints EngagementPoint[] @relation("PointRaiser")
+  assignedPoints EngagementPoint[] @relation("PointAssignee")
+  resolvedPoints EngagementPoint[] @relation("PointResolver")
+  updatedPoints EngagementPoint[] @relation("PointUpdater")
+  pointResponses PointResponse[]
+  pointAttachments PointAttachment[]
   templateChecklistOwners WorkflowTemplateChecklistItem[]
   checklistAssigned EngagementChecklistItem[] @relation("ChecklistOwner")
   checklistCompleted EngagementChecklistItem[] @relation("ChecklistCompleter")
@@ -439,6 +453,8 @@ model EngagementType {
   @@map("engagement_types")
 }
 model Engagement {
+  timeEntries TimeEntry[]
+  points EngagementPoint[]
   checklistItems EngagementChecklistItem[]
   workAllocations WorkAllocation[]
   workflow EngagementWorkflow?
@@ -680,6 +696,8 @@ model WorkflowTemplateStage {
   @@map("workflow_template_stages")
 }
 model EngagementWorkflow {
+  timeEntries TimeEntry[]
+  points EngagementPoint[]
   checklistItems EngagementChecklistItem[]
   workAllocations WorkAllocation[]
   id String @id @default(uuid()) @db.Uuid
@@ -709,6 +727,8 @@ model EngagementWorkflow {
   @@map("engagement_workflows")
 }
 model EngagementWorkflowStage {
+  timeEntries TimeEntry[]
+  points EngagementPoint[]
   checklistItems EngagementChecklistItem[]
   workAllocations WorkAllocation[]
   id String @id @default(uuid()) @db.Uuid
@@ -757,6 +777,7 @@ enum AllocationStatus {
 }
 
 model WorkAllocation {
+  timeEntries TimeEntry[]
   id String @id @default(uuid()) @db.Uuid
   firmId String @db.Uuid @map("firm_id")
   firm Firm @relation(fields: [firmId], references: [id])
@@ -865,6 +886,8 @@ model WorkflowTemplateChecklistItem {
   @@map("workflow_template_checklist_items")
 }
 model EngagementChecklistItem {
+  timeEntries TimeEntry[]
+  points EngagementPoint[]
   id String @id @default(uuid()) @db.Uuid
   firmId String @db.Uuid @map("firm_id")
   engagementId String @db.Uuid @map("engagement_id")
@@ -905,6 +928,7 @@ model EngagementChecklistItem {
   @@unique([firmId, engagementWorkflowId, sourceTemplateChecklistItemId])
   @@index([firmId, engagementId, engagementWorkflowStageId, sequence])
   @@index([firmId, assignedUserId, status, dueDate])
+  @@unique([firmId, engagementId, engagementWorkflowId, engagementWorkflowStageId, id], map: "checklist_point_link_key")
   @@map("engagement_checklist_items")
 }
 model ChecklistComment {
@@ -937,4 +961,176 @@ model ChecklistAttachment {
   updatedAt DateTime @updatedAt @map("updated_at")
   @@index([firmId, checklistItemId])
   @@map("checklist_attachments")
+}
+
+enum PointType {
+  Question
+  ReviewPoint
+  KnowledgeInstruction
+  InternalIssue
+}
+enum PointStatus {
+  Open
+  Responded
+  ClarificationRequired
+  Resolved
+  Closed
+  Reopened
+  Active
+  Archived
+}
+enum PointAudience {
+  Internal
+  External
+}
+model EngagementPoint {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  engagementId String @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields:[firmId, engagementId], references:[firmId,id])
+  pointSequence Int @map("point_sequence")
+  pointNumber String @map("point_number")
+  pointType PointType @map("point_type")
+  title String
+  description String
+  status PointStatus @default(Open)
+  priority EngagementPriority @default(Normal)
+  audience PointAudience @default(Internal)
+  raisedByUserId String @db.Uuid @map("raised_by_user_id")
+  raisedBy User @relation("PointRaiser", fields:[firmId,raisedByUserId],references:[firmId,id])
+  assignedToUserId String @db.Uuid @map("assigned_to_user_id")
+  assignedTo User @relation("PointAssignee", fields:[firmId,assignedToUserId],references:[firmId,id])
+  updatedByUserId String @db.Uuid @map("updated_by_user_id")
+  updatedBy User @relation("PointUpdater", fields:[firmId,updatedByUserId],references:[firmId,id])
+  engagementWorkflowId String? @db.Uuid @map("engagement_workflow_id")
+  workflow EngagementWorkflow? @relation(fields:[firmId,engagementId,engagementWorkflowId],references:[firmId,engagementId,id])
+  workflowStageId String? @db.Uuid @map("workflow_stage_id")
+  stage EngagementWorkflowStage? @relation(fields:[firmId,engagementWorkflowId,workflowStageId],references:[firmId,engagementWorkflowId,id])
+  checklistItemId String? @db.Uuid @map("checklist_item_id")
+  checklistItem EngagementChecklistItem? @relation(fields:[firmId,engagementId,engagementWorkflowId,workflowStageId,checklistItemId],references:[firmId,engagementId,engagementWorkflowId,engagementWorkflowStageId,id], map:"point_checklist_link_fkey")
+  referenceNumber String @default("") @map("reference_number")
+  referenceAmount Decimal? @db.Decimal(18,2) @map("reference_amount")
+  priorYearAmount Decimal? @db.Decimal(18,2) @map("prior_year_amount")
+  dueDate DateTime? @db.Date @map("due_date")
+  blocking Boolean @default(false)
+  resolvedByUserId String? @db.Uuid @map("resolved_by_user_id")
+  resolvedBy User? @relation("PointResolver", fields:[firmId,resolvedByUserId],references:[firmId,id])
+  resolvedAt DateTime? @map("resolved_at")
+  closedAt DateTime? @map("closed_at")
+  revision Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  responses PointResponse[]
+  attachments PointAttachment[]
+  @@unique([firmId,id])
+  @@unique([firmId,engagementId,pointSequence])
+  @@unique([firmId,engagementId,pointNumber])
+  @@index([firmId,engagementId,status,createdAt])
+  @@index([firmId,assignedToUserId,status,dueDate])
+  @@index([firmId,engagementId,blocking,workflowStageId])
+  @@index([firmId,checklistItemId])
+  @@map("engagement_points")
+}
+model PointResponse {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  pointId String @db.Uuid @map("point_id")
+  point EngagementPoint @relation(fields:[firmId,pointId],references:[firmId,id])
+  authorUserId String @db.Uuid @map("author_user_id")
+  author User @relation(fields:[firmId,authorUserId],references:[firmId,id])
+  parentCommentId String? @db.Uuid @map("parent_comment_id")
+  parent PointResponse? @relation("PointThread",fields:[firmId,pointId,parentCommentId],references:[firmId,pointId,id])
+  replies PointResponse[] @relation("PointThread")
+  commentText String @map("comment_text")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  attachments PointAttachment[]
+  @@unique([firmId,pointId,id])
+  @@index([firmId,pointId,createdAt])
+  @@map("point_responses")
+}
+model PointAttachment {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  pointId String @db.Uuid @map("point_id")
+  point EngagementPoint @relation(fields:[firmId,pointId],references:[firmId,id])
+  responseId String? @db.Uuid @map("response_id")
+  response PointResponse? @relation(fields:[firmId,pointId,responseId],references:[firmId,pointId,id])
+  uploadedByUserId String @db.Uuid @map("uploaded_by_user_id")
+  uploadedBy User @relation(fields:[firmId,uploadedByUserId],references:[firmId,id])
+  fileName String @map("file_name")
+  mediaType String @map("media_type")
+  byteSize Int @map("byte_size")
+  storageKey String @unique @map("storage_key")
+  verifiedAt DateTime? @map("verified_at")
+  removedAt DateTime? @map("removed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([firmId,pointId])
+  @@map("point_attachments")
+}
+
+// Work dates are business dates. Only Submitted entries contribute to actuals.
+enum TimeEntryStatus {
+  Draft
+  Submitted
+}
+model TimeEntry {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  userId String @db.Uuid @map("user_id")
+  user User @relation("TimeEmployee", fields: [firmId, userId], references: [firmId, id])
+  engagementId String @db.Uuid @map("engagement_id")
+  engagement Engagement @relation(fields: [firmId, engagementId], references: [firmId, id])
+  engagementWorkflowId String? @db.Uuid @map("engagement_workflow_id")
+  workflow EngagementWorkflow? @relation(fields: [firmId, engagementId, engagementWorkflowId], references: [firmId, engagementId, id])
+  engagementWorkflowStageId String? @db.Uuid @map("engagement_workflow_stage_id")
+  stage EngagementWorkflowStage? @relation(fields: [firmId, engagementWorkflowId, engagementWorkflowStageId], references: [firmId, engagementWorkflowId, id])
+  checklistItemId String? @db.Uuid @map("checklist_item_id")
+  checklistItem EngagementChecklistItem? @relation(fields: [firmId, checklistItemId], references: [firmId, id])
+  workAllocationId String? @db.Uuid @map("work_allocation_id")
+  workAllocation WorkAllocation? @relation(fields: [firmId, workAllocationId], references: [firmId, id])
+  workDate DateTime @db.Date @map("work_date")
+  hours Decimal @db.Decimal(4, 2)
+  description String
+  status TimeEntryStatus @default(Draft)
+  revision Int @default(1)
+  requestId String @db.Uuid @map("request_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  submittedAt DateTime? @map("submitted_at")
+  createdByUserId String @db.Uuid @map("created_by_user_id")
+  createdBy User @relation("TimeCreator", fields: [firmId, createdByUserId], references: [firmId, id])
+  updatedByUserId String @db.Uuid @map("updated_by_user_id")
+  updatedBy User @relation("TimeUpdater", fields: [firmId, updatedByUserId], references: [firmId, id])
+  @@unique([firmId, id])
+  @@unique([firmId, userId, requestId])
+  @@index([firmId, userId, workDate])
+  @@index([firmId, engagementId, status, workDate])
+  @@map("time_entries")
+}
+
+model CapacityAdjustment {
+  id String @id @default(uuid()) @db.Uuid
+  firmId String @db.Uuid @map("firm_id")
+  firm Firm @relation(fields: [firmId], references: [id])
+  userId String @db.Uuid @map("user_id")
+  user User @relation("CapacityEmployee", fields: [firmId, userId], references: [firmId, id])
+  startDate DateTime @db.Date @map("start_date")
+  endDate DateTime @db.Date @map("end_date")
+  adjustmentType String @map("adjustment_type")
+  hoursReduction Decimal @db.Decimal(4,2) @map("hours_reduction")
+  reason String
+  revision Int @default(1)
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdByUserId String @db.Uuid @map("created_by_user_id")
+  createdBy User @relation("CapacityCreator", fields: [firmId, createdByUserId], references: [firmId, id])
+  updatedByUserId String @db.Uuid @map("updated_by_user_id")
+  updatedBy User @relation("CapacityUpdater", fields: [firmId, updatedByUserId], references: [firmId, id])
+  @@unique([firmId, id])
+  @@index([firmId, userId, startDate, endDate])
+  @@map("capacity_adjustments")
 }

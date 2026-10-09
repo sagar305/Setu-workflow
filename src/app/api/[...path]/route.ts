@@ -1,3 +1,7 @@
+import { reportGet } from "@/lib/report-api";
+import { capacityGet, capacityPost } from "@/lib/capacity-api";
+import { timeGet, timePost } from "@/lib/time-api";
+import { pointGet, pointPost } from "@/lib/point-api";
 import { checklistGet, checklistPost } from "@/lib/checklist-api";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
@@ -72,6 +76,11 @@ export async function GET(req: NextRequest, context: Context) {
   try {
     const path = (await context.params).path;
     const token = req.cookies.get(cookieName)?.value;
+    if (["dashboard", "reports"].includes(path[0])) return await reportGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "capacity") return await capacityGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "time") return await timeGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "points")
+      return await pointGet(token, path, req.nextUrl.searchParams);
     if (path[0] === "checklists")
       return await checklistGet(token, path, req.nextUrl.searchParams);
     if (path[0] === "allocations")
@@ -165,6 +174,9 @@ export async function POST(req: NextRequest, context: Context) {
     );
     const route = path.join("/");
     const token = req.cookies.get(cookieName)?.value;
+    if (path[0] === "capacity") return await capacityPost(token, path, data);
+    if (path[0] === "time") return await timePost(token, path, data);
+    if (path[0] === "points") return await pointPost(token, path, data);
     if (path[0] === "checklists") return await checklistPost(token, path, data);
     if (path[0] === "allocations")
       return await allocationPost(token, path, data);

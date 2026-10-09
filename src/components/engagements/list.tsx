@@ -20,19 +20,20 @@ import type {
   ClientChoice,
 } from "./types";
 const baseColumns = [
+  "Client / Engagement",
+  "Current Stage",
+  "Current Owner",
+  "Due Date",
+  "Status",
+];
+const extraColumns = [
   "Client",
   "Engagement",
   "Service",
   "Owner / Preparer",
   "Manager",
-  "Status",
   "Priority",
-  "Due Date",
   "Budget Hours",
-];
-const extraColumns = [
-  "Current Stage",
-  "Current Owner",
   "Days in Stage",
   "Last Move",
   "Engagement Code",
@@ -50,11 +51,13 @@ export function EngagementListPanel({
   options,
   rights,
   clientContext,
+  userId,
 }: {
   data: EngagementList;
   options: EngagementOptions;
   rights: EngagementRights;
   clientContext?: string;
+  userId?: string;
 }) {
   const router = useRouter();
   const [columns, setColumns] = useState(baseColumns);
@@ -64,9 +67,31 @@ export function EngagementListPanel({
   );
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [clients, setClients] = useState<ClientChoice[]>([]);
   const [search, setSearch] = useState("");
   const f = data.filters;
+  const secondaryCount = Object.entries(f).filter(
+    ([key, value]) =>
+      ![
+        "q",
+        "status",
+        "workflowStage",
+        "page",
+        "pageSize",
+        "sort",
+        "direction",
+      ].includes(key) &&
+      !(clientContext && key === "clientId") &&
+      value !== "" &&
+      value != null &&
+      !(key === "scope" && value === "all"),
+  ).length;
+  const changeResult = (name: string, value: string) => {
+    const params = new URLSearchParams(query(1));
+    params.set(name, value);
+    router.push(`${route}?${params}`);
+  };
   const query = (page?: number, scope?: string) => {
     const params = new URLSearchParams();
     Object.entries(f).forEach(([k, v]) => {
@@ -102,6 +127,23 @@ export function EngagementListPanel({
   );
   const cell = (r: EngagementList["items"][number], column: string) => {
     switch (column) {
+      case "Client / Engagement":
+        return (
+          <>
+            <Link className="client-name" href={`/engagements/${r.id}`}>
+              {r.engagementName}
+            </Link>
+            <div className="muted small">
+              {rights.clientView ? (
+                <Link href={`/clients/${r.client.id}`}>
+                  {r.client.displayName}
+                </Link>
+              ) : (
+                r.client.displayName
+              )}
+            </div>
+          </>
+        );
       case "Current Stage":
         return r.workflow?.currentStage?.name ?? "—";
       case "Current Owner":
@@ -182,21 +224,9 @@ export function EngagementListPanel({
     <>
       <div className="page-heading client-heading">
         <div>
-          <p className="eyebrow">ENGAGEMENTS</p>
           <h1>{clientContext ? "Client Engagements" : "Engagements"}</h1>
-          <p className="muted">Work, ownership, dates, and budgets.</p>
         </div>
         <div className="actions">
-          {(rights.configure || rights.fields) && (
-            <Link className="button secondary" href="/engagements/settings">
-              Engagement settings
-            </Link>
-          )}
-          {rights.import && (
-            <Link className="button secondary" href="/engagements/import">
-              Import Engagements
-            </Link>
-          )}
           {rights.create && (
             <Link
               className="button primary"
@@ -208,31 +238,56 @@ export function EngagementListPanel({
         </div>
       </div>
       {!clientContext && (
-        <>
-          <div className="client-stats">
-            {[
-              ["Active", data.summary.active, "active"],
-              ["Due This Week", data.summary.week, "week"],
-              ["Overdue", data.summary.overdue, "overdue"],
-              ["Completed", data.summary.completed, "completed"],
-              ["On Hold", data.summary.onHold, "all"],
-            ].map(([label, count, scope]) => (
+        <nav className="tabs" aria-label="Engagement quick views">
+          {[
+            {
+              label: "All",
+              params: {},
+              active: f.scope === "all" && !f.status && !f.preparerId,
+            },
+            {
+              label: "My Engagements",
+              params: { preparerId: userId ?? "" },
+              active: !!userId && f.preparerId === userId,
+              title: "Engagements where you are the preparer",
+            },
+            {
+              label: "Due Soon",
+              params: { scope: "week" },
+              active: f.scope === "week",
+              title: "Due this week",
+            },
+            {
+              label: "Overdue",
+              params: { scope: "overdue" },
+              active: f.scope === "overdue",
+            },
+            {
+              label: "Waiting",
+              params: { status: "OnHold" },
+              active: f.status === "OnHold",
+              title: "Engagements on hold",
+            },
+          ].map((view) => {
+            const params = new URLSearchParams(query(1));
+            params.set("scope", "all");
+            params.delete("status");
+            params.delete("preparerId");
+            Object.entries(view.params).forEach(([key, value]) => {
+              if (value) params.set(key, value);
+            });
+            return (
               <Link
-                key={label}
-                className="card stat-card"
-                href={`${route}?${label === "On Hold" ? new URLSearchParams({ status: "OnHold" }) : query(1, String(scope))}`}
+                key={view.label}
+                title={view.title}
+                className={view.active ? "active" : ""}
+                href={`${route}?${params}`}
               >
-                <small>{label}</small>
-                <strong>{count}</strong>
+                {view.label}
               </Link>
-            ))}
-          </div>
-          <p className="muted small">
-            Summaries cover engagements you can view. Dates use {data.timezone};
-            this week is Monday {data.days.weekStart} through Sunday{" "}
-            {data.days.weekEnd}.
-          </p>
-        </>
+            );
+          })}
+        </nav>
       )}
       {clientContext && (
         <nav className="tabs">
@@ -248,7 +303,10 @@ export function EngagementListPanel({
         </nav>
       )}
       <section className="card client-filter-card">
-        <form action={route}>
+        <form action={route} id="engagement-filters">
+          <input type="hidden" name="sort" value={f.sort} />
+          <input type="hidden" name="direction" value={f.direction} />
+          <input type="hidden" name="pageSize" value={f.pageSize} />
           {clientContext && (
             <>
               <input type="hidden" name="tab" value="engagements" />
@@ -265,169 +323,160 @@ export function EngagementListPanel({
                 name: engagementLabel(s),
               })),
             )}
-            {choice(
-              "priority",
-              "Priority",
-              PRIORITIES.map((s) => ({ id: s, name: s })),
-            )}
-            {choice("serviceLineId", "Service Line", options.serviceLines)}
             {rights.workflowView && (
-              <>
-                {choice(
-                  "workflowTemplateId",
-                  "Workflow Template",
-                  options.workflowTemplates.map((t) => ({
-                    id: t.id,
-                    name: `${t.name} – V${t.versionNumber}`,
-                  })),
-                )}
-                {choice(
-                  "workflowOwnerId",
-                  "Current Owner",
-                  options.users.map((u) => ({ id: u.id, name: personName(u) })),
-                )}
-                <Field label="Current Stage">
-                  <input
-                    name="workflowStage"
-                    defaultValue={f.workflowStage}
-                    placeholder="Exact stage name"
-                  />
-                </Field>
-              </>
-            )}
-            {choice("engagementTypeId", "Engagement Type", options.types)}
-            {choice(
-              "officeId",
-              "Office",
-              options.offices.map((o) => ({ id: o.id, name: o.officeName })),
-            )}
-            {STAFF.map((key) => (
-              <div key={key}>
-                {choice(
-                  key,
-                  key[0].toUpperCase() + key.slice(1, -2),
-                  options.users.map((u) => ({ id: u.id, name: personName(u) })),
-                )}
-              </div>
-            ))}
-            {choice(
-              "periodType",
-              "Period Type",
-              PERIODS.map((p) => ({ id: p, name: engagementLabel(p) })),
-            )}
-            <TextField
-              label="Period From"
-              name="periodFrom"
-              type="date"
-              value={f.periodFrom}
-            />
-            <TextField
-              label="Period To"
-              name="periodTo"
-              type="date"
-              value={f.periodTo}
-            />
-            <TextField
-              label="Due From"
-              name="dueFrom"
-              type="date"
-              value={f.dueFrom}
-            />
-            <TextField
-              label="Due To"
-              name="dueTo"
-              type="date"
-              value={f.dueTo}
-            />
-            {choice("recurring", "Recurring", [
-              { id: "true", name: "Yes" },
-              { id: "false", name: "No" },
-            ])}
-            {choice("scope", "Due / Lifecycle", [
-              { id: "active", name: "Active" },
-              { id: "completed", name: "Completed" },
-              { id: "overdue", name: "Overdue" },
-              { id: "week", name: "Due This Week" },
-            ])}
-            <Field label="Sort by">
-              <select name="sort" defaultValue={f.sort}>
-                {[
-                  ["dueDate", "Due Date"],
-                  ["engagementName", "Engagement Name"],
-                  ["engagementCode", "Engagement Code"],
-                  ["status", "Status"],
-                  ["priority", "Priority"],
-                  ["budgetHours", "Budget"],
-                  ["createdAt", "Created Date"],
-                  ["updatedAt", "Updated Date"],
-                ].map(([value, label]) => (
-                  <option value={value} key={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Order">
-              <select name="direction" defaultValue={f.direction}>
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-            </Field>
-            <Field label="Rows per page">
-              <select name="pageSize" defaultValue={f.pageSize}>
-                {[10, 25, 50, 100].map((n) => (
-                  <option key={n}>{n}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          {!clientContext && (
-            <details className="spaced">
-              <summary>Filter by Client</summary>
-              <div className="eng-client-search">
-                <Field label="Find Client">
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </Field>
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(
-                        "/api/engagements/clients?q=" +
-                          encodeURIComponent(search),
-                      );
-                      const body = await response.json();
-                      if (!response.ok) throw new Error(body.error);
-                      setClients(body);
-                    } catch (e) {
-                      setMessage(
-                        e instanceof Error ? e.message : "Search failed.",
-                      );
-                    }
-                  }}
-                >
-                  Search Clients
-                </button>
-              </div>
-              <Field label="Client">
-                <select name="clientId" defaultValue={f.clientId ?? ""}>
-                  <option value="">All Clients</option>
-                  {f.clientId && !clients.some((c) => c.id === f.clientId) && (
-                    <option value={f.clientId}>Selected Client</option>
-                  )}
-                  {clients.map((c) => (
-                    <option value={c.id} key={c.id}>
-                      {c.displayName} · {c.clientCode}
-                    </option>
-                  ))}
-                </select>
+              <Field label="Current Stage">
+                <input
+                  name="workflowStage"
+                  defaultValue={f.workflowStage}
+                  placeholder="Exact stage name"
+                />
               </Field>
-            </details>
-          )}
+            )}
+            <button
+              type="button"
+              className="button secondary"
+              aria-expanded={filtersOpen}
+              aria-controls="engagement-secondary-filters"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              Filters{secondaryCount ? ` (${secondaryCount})` : ""}
+            </button>
+          </div>
+          <div id="engagement-secondary-filters" hidden={!filtersOpen}>
+            <div className="client-filters spaced">
+              {choice(
+                "priority",
+                "Priority",
+                PRIORITIES.map((s) => ({ id: s, name: s })),
+              )}
+              {choice("serviceLineId", "Service Line", options.serviceLines)}
+              {rights.workflowView && (
+                <>
+                  {choice(
+                    "workflowTemplateId",
+                    "Workflow Template",
+                    options.workflowTemplates.map((t) => ({
+                      id: t.id,
+                      name: `${t.name} – V${t.versionNumber}`,
+                    })),
+                  )}
+                  {choice(
+                    "workflowOwnerId",
+                    "Current Owner",
+                    options.users.map((u) => ({
+                      id: u.id,
+                      name: personName(u),
+                    })),
+                  )}
+                </>
+              )}
+              {choice("engagementTypeId", "Engagement Type", options.types)}
+              {choice(
+                "officeId",
+                "Office",
+                options.offices.map((o) => ({ id: o.id, name: o.officeName })),
+              )}
+              {STAFF.map((key) => (
+                <div key={key}>
+                  {choice(
+                    key,
+                    key[0].toUpperCase() + key.slice(1, -2),
+                    options.users.map((u) => ({
+                      id: u.id,
+                      name: personName(u),
+                    })),
+                  )}
+                </div>
+              ))}
+              {choice(
+                "periodType",
+                "Period Type",
+                PERIODS.map((p) => ({ id: p, name: engagementLabel(p) })),
+              )}
+              <TextField
+                label="Period From"
+                name="periodFrom"
+                type="date"
+                value={f.periodFrom}
+              />
+              <TextField
+                label="Period To"
+                name="periodTo"
+                type="date"
+                value={f.periodTo}
+              />
+              <TextField
+                label="Due From"
+                name="dueFrom"
+                type="date"
+                value={f.dueFrom}
+              />
+              <TextField
+                label="Due To"
+                name="dueTo"
+                type="date"
+                value={f.dueTo}
+              />
+              {choice("recurring", "Recurring", [
+                { id: "true", name: "Yes" },
+                { id: "false", name: "No" },
+              ])}
+              {choice("scope", "Due / Lifecycle", [
+                { id: "active", name: "Active" },
+                { id: "completed", name: "Completed" },
+                { id: "overdue", name: "Overdue" },
+                { id: "week", name: "Due This Week" },
+              ])}
+            </div>
+            {!clientContext && (
+              <details className="spaced">
+                <summary>Filter by Client</summary>
+                <div className="eng-client-search">
+                  <Field label="Find Client">
+                    <input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </Field>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(
+                          "/api/engagements/clients?q=" +
+                            encodeURIComponent(search),
+                        );
+                        const body = await response.json();
+                        if (!response.ok) throw new Error(body.error);
+                        setClients(body);
+                      } catch (e) {
+                        setMessage(
+                          e instanceof Error ? e.message : "Search failed.",
+                        );
+                      }
+                    }}
+                  >
+                    Search Clients
+                  </button>
+                </div>
+                <Field label="Client">
+                  <select name="clientId" defaultValue={f.clientId ?? ""}>
+                    <option value="">All Clients</option>
+                    {f.clientId &&
+                      !clients.some((c) => c.id === f.clientId) && (
+                        <option value={f.clientId}>Selected Client</option>
+                      )}
+                    {clients.map((c) => (
+                      <option value={c.id} key={c.id}>
+                        {c.displayName} · {c.clientCode}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </details>
+            )}
+          </div>
           <div className="filter-actions">
             <button className="button primary">Apply filters</button>
             <Link
@@ -555,15 +604,63 @@ export function EngagementListPanel({
         <div className="table-toolbar">
           <strong>{data.total} matching engagements</strong>
           <div className="actions">
+            {" "}
+            <Field label="Sort by">
+              <select
+                name="sort"
+                defaultValue={f.sort}
+                onChange={(e) => changeResult("sort", e.target.value)}
+              >
+                {[
+                  ["dueDate", "Due Date"],
+                  ["engagementName", "Engagement Name"],
+                  ["engagementCode", "Engagement Code"],
+                  ["status", "Status"],
+                  ["priority", "Priority"],
+                  ["budgetHours", "Budget"],
+                  ["createdAt", "Created Date"],
+                  ["updatedAt", "Updated Date"],
+                ].map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Order">
+              <select
+                name="direction"
+                defaultValue={f.direction}
+                onChange={(e) => changeResult("direction", e.target.value)}
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </Field>
+          </div>
+          <div className="actions">
             <details className="column-picker">
-              <summary className="button secondary">Customize Columns</summary>
+              <summary className="button secondary">Table options</summary>
               <div>
+                {(rights.configure || rights.fields) && (
+                  <Link
+                    className="button secondary"
+                    href="/engagements/settings"
+                  >
+                    Engagement settings
+                  </Link>
+                )}
+                {rights.import && (
+                  <Link className="button secondary" href="/engagements/import">
+                    Import Engagements
+                  </Link>
+                )}
                 {[...baseColumns, ...extraColumns].map((c) => (
                   <label className="checkbox" key={c}>
                     <input
                       type="checkbox"
                       checked={columns.includes(c)}
-                      disabled={c === "Engagement"}
+                      disabled={c === "Client / Engagement"}
                       onChange={() =>
                         setColumns(
                           columns.includes(c)
@@ -612,6 +709,7 @@ export function EngagementListPanel({
                 {columns.map((c) => (
                   <th key={c}>{c}</th>
                 ))}
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -636,6 +734,14 @@ export function EngagementListPanel({
                   {columns.map((c) => (
                     <td key={c}>{cell(r, c)}</td>
                   ))}
+                  <td>
+                    <Link
+                      href={`/engagements/${r.id}`}
+                      aria-label={`Open ${r.engagementName}`}
+                    >
+                      Open
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -645,6 +751,18 @@ export function EngagementListPanel({
           )}
         </div>
         <div className="pagination">
+          {" "}
+          <Field label="Rows per page">
+            <select
+              name="pageSize"
+              defaultValue={f.pageSize}
+              onChange={(e) => changeResult("pageSize", e.target.value)}
+            >
+              {[10, 25, 50, 100].map((n) => (
+                <option key={n}>{n}</option>
+              ))}
+            </select>
+          </Field>
           <span>
             Page {f.page} of {Math.max(1, Math.ceil(data.total / f.pageSize))}
           </span>

@@ -1,4 +1,6 @@
+import { BudgetHours } from "@/components/time/budget";
 import { ChecklistPanel } from "@/components/checklists/panel";
+import { PointsWorkspace, PointOverview } from "@/components/points/workspace";
 import { getChecklist } from "@/lib/checklists";
 import { AllocationWorkspace } from "@/components/allocations/workspace";
 import { engagementPage, engagementPageRecord } from "@/lib/engagement-page";
@@ -26,6 +28,8 @@ export default async function Page({
   const query = await searchParams;
   const tab = [
     "overview",
+    ...(rights.hours ? ["hours"] : []),
+    ...(rights.points ? ["queries"] : []),
     ...(rights.checklist ? ["checklist"] : []),
     "team",
     "activity",
@@ -57,6 +61,17 @@ export default async function Page({
       options={options}
       rights={rights}
       tab={tab}
+      hours={tab === "hours" ? <BudgetHours engagementId={engagementId} /> : undefined}
+      points={
+        tab === "queries" ? (
+          <PointsWorkspace engagementId={engagementId} query={query} />
+        ) : undefined
+      }
+      pointSummary={
+        tab === "overview" && rights.points ? (
+          <PointOverview engagementId={engagementId} />
+        ) : undefined
+      }
       checklist={
         checklist ? (
           <ChecklistPanel

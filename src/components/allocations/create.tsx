@@ -29,9 +29,13 @@ type Preview = {
 export function CreateAllocation({
   engagementId,
   today,
+  assignedUserId,
+  label = "+ Allocate Work",
 }: {
   engagementId?: string;
   today: string;
+  assignedUserId?: string;
+  label?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -40,8 +44,9 @@ export function CreateAllocation({
   const [options, setOptions] = useState<Options>();
   const [selected, setSelected] = useState(engagementId ?? "");
   const [choices, setChoices] = useState<
-    { id: string; engagementName: string }[]
+    { id: string; engagementName: string; status: string }[]
   >([]);
+  const [searched, setSearched] = useState(false);
   const [dates, setDates] = useState([{ date: today, hours: "" }]);
   const [rows, setRows] = useState<Draft[]>([]);
   const [preview, setPreview] = useState<Preview>();
@@ -52,7 +57,15 @@ export function CreateAllocation({
     setOptions(undefined);
     if (eid)
       try {
-        setOptions(await getJson<Options>(`/api/allocations/${eid}/options`));
+        const result = await getJson<Options>(
+          `/api/allocations/${eid}/options`,
+        );
+        if (["Completed", "Cancelled"].includes(result.engagement.status)) {
+          throw new Error(
+            `${result.engagement.engagementName} is ${result.engagement.status.toLowerCase()}. Select an open engagement to allocate work.`,
+          );
+        }
+        setOptions(result);
       } catch (e) {
         setError((e as Error).message);
       }
@@ -90,7 +103,7 @@ export function CreateAllocation({
           if (!open && engagementId) void choose(engagementId);
         }}
       >
-        + Allocate Work
+        {label}
       </button>
       {open && (
         <>
@@ -106,11 +119,16 @@ export function CreateAllocation({
                 setError("");
                 try {
                   const d = await getJson<{
-                    items: { id: string; engagementName: string }[];
+                    items: {
+                      id: string;
+                      engagementName: string;
+                      status: string;
+                    }[];
                   }>(
-                    `/api/engagements?q=${encodeURIComponent(String(new FormData(e.currentTarget).get("search") ?? ""))}`,
+                    `/api/engagements?scope=all&q=${encodeURIComponent(String(new FormData(e.currentTarget).get("search") ?? ""))}`,
                   );
                   setChoices(d.items);
+                  setSearched(true);
                 } catch (e) {
                   setError((e as Error).message);
                 }
@@ -127,16 +145,38 @@ export function CreateAllocation({
                 >
                   <option value="">Select engagement</option>
                   {choices.map((e) => (
-                    <option value={e.id} key={e.id}>
-                      {e.engagementName}
+                    <option
+                      value={e.id}
+                      key={e.id}
+                      disabled={["Completed", "Cancelled"].includes(e.status)}
+                    >
+                      {e.engagementName} — {e.status}
                     </option>
                   ))}
                 </select>
               </Field>
               <small>
-                Search returns up to 25 permitted engagements; narrow the name
-                or code if needed.
+                Search returns up to 25 permitted engagements. Completed and
+                cancelled engagements are shown but cannot receive new
+                allocations.
               </small>
+              {searched && choices.length === 0 && (
+                <p role="status">
+                  No matching engagements found. Try the client name, engagement
+                  name or code, or clear the search to browse.
+                </p>
+              )}
+              {searched &&
+                choices.length > 0 &&
+                choices.every((e) =>
+                  ["Completed", "Cancelled"].includes(e.status),
+                ) && (
+                  <p role="status">
+                    All matching engagements are completed or cancelled. Reopen
+                    the relevant engagement through its engagement/workflow
+                    controls, or select another engagement.
+                  </p>
+                )}
             </form>
           )}
           {options && (
@@ -164,7 +204,7 @@ export function CreateAllocation({
             >
               <div className="form-grid">
                 <Field label="Assign To">
-                  <select name="assignedUserId" required>
+                  <select name="assignedUserId" required defaultValue={options.users.some(u => u.id === assignedUserId) ? assignedUserId : ""}>
                     <option value="">Select employee</option>
                     {options.users.map((u) => (
                       <option key={u.id} value={u.id}>
