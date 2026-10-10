@@ -148,6 +148,7 @@ export async function seedDemoClients() {
             firstName: ["Taylor", "Sam", "Robin", "Casey", "Jamie"][i],
             lastName: index === 0 ? "Morgan" : "Park",
             email: `contact${i + 1}@${domain}`,
+            phone: `555-010${i + 1}`,
             jobTitle: "Controller",
             contactType: "Accounting",
             isPrimary: true,
