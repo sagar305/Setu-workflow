@@ -126,6 +126,8 @@ Browser tests cover anonymous redirects, login/logout, administration pages, res
 
 ## Database changes and deployment
 
+For hosted deployment on Vercel + Neon, follow [DEPLOY.md](DEPLOY.md).
+
 ```sh
 # Author a future migration against a development database:
 npx prisma migrate dev --name descriptive_change
