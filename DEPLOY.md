@@ -22,7 +22,8 @@ In **Settings → Environment Variables**, for Production:
 | Variable | Value |
 | --- | --- |
 | `APP_URL` | `https://<your-project>.vercel.app`, or your custom domain. HTTPS is required. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | From an email provider such as Resend, Brevo or SendGrid. Needed for invitations and password resets. |
+| `RESEND_API_KEY` | API key from [resend.com](https://resend.com) → **API Keys** ("Sending access" is enough). Needed for invitations and password resets. |
+| `MAIL_FROM` | For example `Setu Workflow <noreply@yourdomain.com>`. The domain must be verified in Resend (**Domains** → add the DNS records it shows). Before you verify a domain, `onboarding@resend.dev` works, but it can only send to your own Resend account email. |
 | `TRUST_PROXY` | `true`. Vercel overwrites `X-Forwarded-For`, so the login limiter applies per client instead of being shared. |
 | `CRON_SECRET` | A random string of 16 or more characters, for example `openssl rand -hex 32`. It authorizes the daily cleanup job. |
 

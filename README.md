@@ -80,9 +80,8 @@ Seeding skips a firm whose seed administrator already exists; it does not reset 
 | APP_URL | Canonical application origin. HTTPS required in production. |
 | SEED_PASSWORD | Development-only password, at least 12 characters. |
 | DEV_MAIL | `true` writes development messages under `.local/mail`. Ignored in production. |
-| SMTP_HOST / SMTP_PORT | Production SMTP endpoint; port 587 by default, 465 for implicit TLS. |
-| SMTP_USER / SMTP_PASSWORD | SMTP credentials, if needed. |
-| MAIL_FROM | Verified sending address. Required for SMTP. |
+| RESEND_API_KEY | Resend API key used to send invitation and password-reset email in production. |
+| MAIL_FROM | Sender address on a domain verified in Resend, e.g. `Setu Workflow <noreply@yourdomain.com>`. |
 | TRUST_PROXY | Leave unset unless a trusted ingress strips and overwrites X-Forwarded-For. |
 
 Session tokens are high-entropy random opaque values and do not need a signing key. Never commit `.env` or `.local`; both are ignored. No database or authentication credentials are embedded in source.
@@ -91,7 +90,7 @@ Session tokens are high-entropy random opaque values and do not need a signing k
 
 In Admin → Users, choose **Invite user**. The user receives a single-use invitation valid for 48 hours. The invitation screen displays the firm name and asks for a matching password pair. Active users can request a reset from the login page; reset links last 30 minutes. A successful reset invalidates all sessions and other unused reset links.
 
-For local development, inspect the newest `.txt` file in `.local/mail` and copy its link. Files are not served over HTTP. Links put the token in the URL fragment so it does not enter server access logs or referrers; the browser sends it only in the relevant POST body. Protect your local account and delete old development mail when finished. Never use DEV_MAIL as a production delivery mechanism. SMTP delivery errors on invitations tell the admin to correct configuration and resend; resetting an unknown email returns the same message as resetting a registered email.
+For local development, inspect the newest `.txt` file in `.local/mail` and copy its link. Files are not served over HTTP. Links put the token in the URL fragment so it does not enter server access logs or referrers; the browser sends it only in the relevant POST body. Protect your local account and delete old development mail when finished. Never use DEV_MAIL as a production delivery mechanism. Resend delivery errors on invitations tell the admin to correct configuration and resend; resetting an unknown email returns the same message as resetting a registered email.
 
 ## Architecture and security decisions
 
@@ -137,7 +136,7 @@ npm run build
 npm run start
 ```
 
-Do not use `db push` as a deployment substitute. Use a separate migration database account and a restricted runtime account. Back up data before migration. Configure TLS to PostgreSQL, an HTTPS reverse proxy, SMTP, secret management, monitoring, and backup/restore procedures before production launch. `start` binds to loopback by default, suitable for a reverse proxy. Configure proxy trust explicitly; without it, the client-level limiter is shared across users in addition to per-email throttles.
+Do not use `db push` as a deployment substitute. Use a separate migration database account and a restricted runtime account. Back up data before migration. Configure TLS to PostgreSQL, an HTTPS reverse proxy, Resend email, secret management, monitoring, and backup/restore procedures before production launch. `start` binds to loopback by default, suitable for a reverse proxy. Configure proxy trust explicitly; without it, the client-level limiter is shared across users in addition to per-email throttles.
 
 ## Structure
 
@@ -157,7 +156,7 @@ e2e/                      browser journey tests
 
 This is a foundation, not an independently certified production release. No billing, Setu super-admin UI, MFA, email-change verification, long-lived sessions, full audit viewer, or operational workflow scopes are implemented. Firm/managed-team/assigned-work visibility permissions are reserved for later modules; they grant no workflow capabilities now. Profile details are read-only; administrators edit basic user data. Email is intentionally immutable after invitation.
 
-Tenant isolation is application-enforced with composite foreign-key protection; PostgreSQL row-level security is not enabled. Never import raw Prisma into future routes to bypass the scoped services. Database credentials can access multiple tenants and must remain server-only. Database owners can change audit rows; append-only database grants/archival storage and retention policies belong in production hardening. SMTP is synchronous with explicit resend after failure; a durable encrypted outbox/retry worker is deferred. Expired sessions and limiter rows require scheduled cleanup in a deployed environment. Rate limiting is a baseline; internet-facing deployments should also have ingress abuse protection. A nonce-based Content Security Policy remains a deployment hardening task.
+Tenant isolation is application-enforced with composite foreign-key protection; PostgreSQL row-level security is not enabled. Never import raw Prisma into future routes to bypass the scoped services. Database credentials can access multiple tenants and must remain server-only. Database owners can change audit rows; append-only database grants/archival storage and retention policies belong in production hardening. Email delivery (Resend) is synchronous with explicit resend after failure; a durable encrypted outbox/retry worker is deferred. Expired sessions and limiter rows require scheduled cleanup in a deployed environment. Rate limiting is a baseline; internet-facing deployments should also have ingress abuse protection. A nonce-based Content Security Policy remains a deployment hardening task.
 
 For subsequent builds, keep tenant-scoped composite relations, check permissions in every server entry point, redact secrets from DTOs/audits, and add adversarial cross-tenant tests for every new resource. Do not build Clients, Engagements, Templates, Checklists, Queries, Budget/Actual Hours, or Team Capacity as part of Build 01.
 

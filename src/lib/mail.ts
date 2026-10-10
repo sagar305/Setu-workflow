@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import nodemailer from 'nodemailer';
 export function appUrl() {
   const url = new URL(process.env.APP_URL ?? 'http://127.0.0.1:3000');
   if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') throw new Error('Production APP_URL must use HTTPS.');
@@ -19,8 +18,17 @@ export async function sendLink(to: string, kind: 'invite' | 'reset', token: stri
     await writeFile(path.join(directory, `${Date.now()}-${randomUUID()}.txt`), `To: ${to}\nSubject: ${subject}\n\n${text}`, { mode: 0o600 });
     return;
   }
-  if (!process.env.SMTP_HOST || !process.env.MAIL_FROM) throw new Error('Email delivery is not configured.');
-  const port = Number(process.env.SMTP_PORT ?? 587);
-  const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST, port, secure: port === 465, requireTLS: true, auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined });
-  await transport.sendMail({ from: process.env.MAIL_FROM, to, subject, text });
+  if (!process.env.RESEND_API_KEY || !process.env.MAIL_FROM) throw new Error('Email delivery is not configured.');
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: process.env.MAIL_FROM, to: [to], subject, text }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  // Log Resend's error name/message only; never the request, which carries the link token.
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({})) as { name?: string; message?: string };
+    console.error(`Resend delivery failed (${response.status}): ${detail.name ?? 'unknown'} ${detail.message ?? ''}`.trim());
+    throw new Error('Email delivery failed.');
+  }
 }
