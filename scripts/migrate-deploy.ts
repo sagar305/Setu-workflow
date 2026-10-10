@@ -8,7 +8,13 @@ if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production' && process
 }
 // Migrations take advisory locks, which need a direct (unpooled) connection.
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
-if (!url) throw new Error('Set DATABASE_URL_UNPOOLED or DATABASE_URL before running migrations.');
+if (!url) {
+  // Names only, never values: shows whether the database integration used a prefix or another environment.
+  const found = Object.keys(process.env).filter(key => /DATABASE|POSTGRES|^PG/.test(key)).sort();
+  console.error(`DATABASE_URL is not set for this ${process.env.VERCEL_ENV ?? 'local'} build. Database-related variables present: ${found.join(', ') || 'none'}.`);
+  console.error('In Vercel, connect the Neon database to this environment (Storage → database → Projects) with no custom prefix, then redeploy.');
+  process.exit(1);
+}
 const env = { ...process.env, DATABASE_URL: url };
 const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy'], { stdio: 'inherit', env });
 if (result.status !== 0) process.exit(result.status ?? 1);
