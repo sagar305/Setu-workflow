@@ -9,5 +9,11 @@ if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production' && process
 // Migrations take advisory locks, which need a direct (unpooled) connection.
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) throw new Error('Set DATABASE_URL_UNPOOLED or DATABASE_URL before running migrations.');
-const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy'], { stdio: 'inherit', env: { ...process.env, DATABASE_URL: url } });
-process.exit(result.status ?? 1);
+const env = { ...process.env, DATABASE_URL: url };
+const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy'], { stdio: 'inherit', env });
+if (result.status !== 0) process.exit(result.status ?? 1);
+// Optional demo data for trial deployments; the seed skips firms and records that already exist.
+if (process.env.SEED_DEMO_DATA === 'true') {
+  const seed = spawnSync(process.execPath, ['node_modules/tsx/dist/cli.mjs', 'prisma/seed.ts'], { stdio: 'inherit', env });
+  process.exit(seed.status ?? 1);
+}

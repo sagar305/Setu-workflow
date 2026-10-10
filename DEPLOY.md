@@ -27,7 +27,7 @@ In **Settings → Environment Variables**, for Production:
 | `TRUST_PROXY` | `true`. Vercel overwrites `X-Forwarded-For`, so the login limiter applies per client instead of being shared. |
 | `CRON_SECRET` | A random string of 16 or more characters, for example `openssl rand -hex 32`. It authorizes the daily cleanup job. |
 
-Do not set `SEED_PASSWORD`, `DEV_MAIL` or `TEST_DATABASE_URL` in Vercel.
+Do not set `DEV_MAIL` or `TEST_DATABASE_URL` in Vercel. `SEED_PASSWORD` is only for the optional demo data below.
 
 ## 4. Redeploy
 
@@ -45,6 +45,19 @@ DATABASE_URL="<unpooled Neon URL>" pnpm firm:provision \
 ```
 
 It prints a one-time temporary password. Sign in at `APP_URL`, then use **Forgot password** to set your own password. Invite the rest of the team from **Admin → Users**.
+
+## Optional: temporary demo data
+
+To try the app with sample firms, clients and engagements, add these two Production variables and redeploy:
+
+| Variable | Value |
+| --- | --- |
+| `SEED_DEMO_DATA` | `true` |
+| `SEED_PASSWORD` | A strong password (12+ characters) shared by all demo accounts |
+
+After migrations, the build seeds two demo firms. Their logins are listed in README under "Demo credentials", for example `admin@demo.setu.test`. Later builds skip data that already exists. Delete both variables once seeded.
+
+Demo accounts are reachable by anyone who knows the emails and password. Before entering real client data, reset the Neon database (Neon console → Branches → main → Reset, or recreate it), redeploy to recreate the empty tables, and provision your real firm.
 
 ## 6. Scheduled cleanup
 

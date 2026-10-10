@@ -10,7 +10,8 @@ import { seedDemoClients } from './seed-clients';
 import { seedDemoEngagements } from './seed-engagements';
 import { seedDemoWorkflows } from './seed-workflows';
 async function main() {
-  if (process.env.NODE_ENV === 'production') throw new Error('Demo seeding is disabled in production.');
+  // Production seeding requires an explicit SEED_DEMO_DATA=true opt-in (temporary demo deployments only).
+  if (process.env.NODE_ENV === 'production' && process.env.SEED_DEMO_DATA !== 'true') throw new Error('Demo seeding is disabled in production. Set SEED_DEMO_DATA=true to seed a demo deployment.');
   const secret = process.env.SEED_PASSWORD;
   if (!secret || secret.length < 12) throw new Error('Set a development-only SEED_PASSWORD of at least 12 characters.');
   const hash = await hashPassword(secret);

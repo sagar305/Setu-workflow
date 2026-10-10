@@ -4,7 +4,7 @@ import { createPoint, changePoint } from "../src/lib/points";
 import { firmDates } from "../src/lib/engagement-constants";
 import { saveEngagement } from "../src/lib/engagements";
 export async function seedDemoPoints() {
-  if (process.env.NODE_ENV === "production")
+  if (process.env.NODE_ENV === "production" && process.env.SEED_DEMO_DATA !== "true")
     throw new Error("Demo seeding is development-only.");
   for (const domain of ["demo.setu.test", "sample.setu.test"]) {
     const actor = await db.user.findUnique({
