@@ -165,3 +165,7 @@ Build #8 adds My Time, quick allocation time entry and engagement Budget & Hours
 Build #9 adds Team Capacity, dated capacity reductions and adjustment-aware allocation warnings. See [BUILD9.md](BUILD9.md) and [BUILD9-VERIFICATION.md](BUILD9-VERIFICATION.md).
 
 Build #10 completes the V1 Management Dashboard, My Day, deterministic attention rules and six operational CSV reports. See [BUILD10.md](BUILD10.md) and [BUILD10-VERIFICATION.md](BUILD10-VERIFICATION.md) for behavior, security and validation. Earlier build-status statements above are historical.
+
+## Firm trials and sign-up (20 October 2026)
+
+Public administrator sign-up is now available at `/signup` (linked from Login), with email activation, isolated firm workspaces, 15-day trials and server-enforced read-only expiry. Existing firms keep ongoing access. The earlier foundation-only statement that no public registration exists is superseded. See [TRIAL-ONBOARDING.md](TRIAL-ONBOARDING.md) for local testing, production mail configuration and operator extension controls. Continuation contact: hello@setutechnology.com.
