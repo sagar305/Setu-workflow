@@ -283,3 +283,20 @@ test("expired activation link cannot start a trial; invalid signup input creates
     requestTrial({ ...payload(), timezone: "invalid-zone" }, randomUUID()),
   ).rejects.toThrow();
 });
+
+test("production trial signup accepts the current Resend mail configuration", async () => {
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("DEV_MAIL", "false");
+  vi.stubEnv("SMTP_HOST", "");
+  vi.stubEnv("RESEND_API_KEY", "test-placeholder-not-a-real-key");
+  vi.stubEnv("MAIL_FROM", "Setu <noreply@trial.test.invalid>");
+  try {
+    const input = payload();
+    await expect(requestTrial(input, randomUUID())).resolves.toHaveProperty(
+      "message",
+    );
+    expect(mail.sent.some((m) => m.to === input.email)).toBe(true);
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});

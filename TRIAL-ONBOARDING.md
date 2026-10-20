@@ -50,3 +50,5 @@ The command requires direct server/database access, accepts only an activated tr
 
 Production build passed with `/signup` and `/trial` included. ESLint identified one internal link that needed Next.js `Link`; it was corrected and the affected file passed lint. The production build preceded that link-only correction; final TypeScript verification covers it. Local preview was restarted after verification.
 
+
+PR integration (21 October 2026): rebased onto the latest master, preserving Vercel/Neon deployment and Resend delivery. Signup now checks RESEND_API_KEY and MAIL_FROM. Seven focused trial tests passed, including a mocked production Resend-configuration check, and TypeScript passed after rebasing. The first rerun found the local database stopped; after restarting it, all seven passed. No live email was sent in this check.

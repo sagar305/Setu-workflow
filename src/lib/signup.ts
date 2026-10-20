@@ -100,4 +100,3 @@ export async function requestTrial(input: unknown, clientKey: string) {
   }
   return response;
 }
-
