@@ -1,3 +1,6 @@
+import { requestTrial } from "@/lib/signup";
+import { assertTrialWritable } from "@/lib/trial";
+import { principal } from "@/lib/auth";
 import { reportGet } from "@/lib/report-api";
 import { capacityGet, capacityPost } from "@/lib/capacity-api";
 import { timeGet, timePost } from "@/lib/time-api";
@@ -76,9 +79,12 @@ export async function GET(req: NextRequest, context: Context) {
   try {
     const path = (await context.params).path;
     const token = req.cookies.get(cookieName)?.value;
-    if (["dashboard", "reports"].includes(path[0])) return await reportGet(token, path, req.nextUrl.searchParams);
-    if (path[0] === "capacity") return await capacityGet(token, path, req.nextUrl.searchParams);
-    if (path[0] === "time") return await timeGet(token, path, req.nextUrl.searchParams);
+    if (["dashboard", "reports"].includes(path[0]))
+      return await reportGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "capacity")
+      return await capacityGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "time")
+      return await timeGet(token, path, req.nextUrl.searchParams);
     if (path[0] === "points")
       return await pointGet(token, path, req.nextUrl.searchParams);
     if (path[0] === "checklists")
@@ -174,6 +180,7 @@ export async function POST(req: NextRequest, context: Context) {
     );
     const route = path.join("/");
     const token = req.cookies.get(cookieName)?.value;
+    if (path[0] !== "auth") assertTrialWritable((await principal(token)).firm);
     if (path[0] === "capacity") return await capacityPost(token, path, data);
     if (path[0] === "time") return await timePost(token, path, data);
     if (path[0] === "points") return await pointPost(token, path, data);
@@ -191,6 +198,8 @@ export async function POST(req: NextRequest, context: Context) {
         ? (req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
           "shared")
         : "shared";
+    if (route === "auth/signup")
+      return NextResponse.json(await requestTrial(data, clientKey));
     if (route === "auth/login") {
       const session = await login(data, clientKey);
       const response = NextResponse.json({ message: "Logged in." });

@@ -16,6 +16,9 @@ enum UserStatus {
   Inactive
 }
 model Firm {
+  isTrial Boolean @default(false) @map("is_trial")
+  trialStartedAt DateTime? @map("trial_started_at")
+  trialEndsAt DateTime? @map("trial_ends_at")
   capacityAdjustments CapacityAdjustment[]
   timeEntries TimeEntry[]
   workAllocations WorkAllocation[]
