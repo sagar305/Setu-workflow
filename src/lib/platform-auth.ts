@@ -124,7 +124,11 @@ export async function staffLogin(input: unknown, ip: string | null, isRoute: (s:
   const data = loginInput.parse(input);
   // The API path is guessable; the secret route is what has to be known.
   invariant(isRoute(data.routeSecret), "Not found.", 404);
-  await limited("platform-login-client", ip ?? "shared", 30);
+  // Per address, and per client only when the real client address is known:
+  // a shared bucket would let anyone lock every staff member out. Wrong
+  // passwords also lock the account itself (see failed()).
+  await limited("platform-login-email", data.email, 20);
+  if (ip) await limited("platform-login-client", ip, 30);
   const admin = await db.platformAdmin.findUnique({ where: { email: data.email } });
   if (admin) assertNotLocked(admin);
   const ok = await verifyPassword(data.password, admin?.passwordHash ?? null);
