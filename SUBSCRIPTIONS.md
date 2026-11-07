@@ -14,11 +14,11 @@ More than 3 users: contact sales. Extra users are $4.99 per user per month;
 sales issues a key carrying the agreed number of users. Prices live in
 `src/lib/plans.ts`.
 
-## Super admin
+## Account owner
 
-Each firm has exactly one **account owner** (called "account owner" before migration `202611070002`): the administrator who signed up (or,
+Each firm has exactly one **account owner** (called "super admin" before migration `202611070002`): the administrator who signed up (or,
 for firms that existed before this change, the earliest Firm Admin — set by the
-`202611070001_subscriptions` migration). Shown with a "Account owner" badge in
+`202611070001_subscriptions` migration). Shown with an "Account owner" badge in
 Admin → Users.
 
 Only the account owner can:
