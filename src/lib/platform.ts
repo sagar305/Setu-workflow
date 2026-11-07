@@ -21,6 +21,7 @@ import { invariant } from "./errors";
 import { issueLicenseKey, readLicenseKey, MAX_LICENSE_DAYS, MAX_LICENSE_SEATS } from "./license-key";
 import { BILLING_DAYS } from "./plans";
 import { appUrl, sendEmail } from "./mail";
+import { renderEmail } from "./email-template";
 import { applyLicense, licenseSecret } from "./subscription";
 import { accessState } from "./trial";
 import { id } from "./validation";
@@ -468,23 +469,43 @@ async function sendReminder(
   const subject = state.licensed
     ? `Your Setu Workflow plan ends ${left <= 1 ? "tomorrow" : `in ${left} days`}`
     : "Your Setu Workflow plan has ended";
+  const buyUrl = process.env.NEXT_PUBLIC_WORKFLOW_BUY_URL || "https://setutechnology.com/products/workflow";
   await sendEmail(
     owner.email,
     subject,
-    [
-      `Hi ${owner.firstName},`,
-      "",
-      state.licensed
-        ? `The Setu Workflow plan for ${firm.displayName} ends on ${date}. After that your workspace becomes read-only until you renew — your data stays safe.`
-        : `The Setu Workflow plan for ${firm.displayName} ended on ${date}. Your workspace is read-only; renew to start editing again. Your data is safe.`,
-      "",
-      `Renew: buy a key at ${process.env.NEXT_PUBLIC_WORKFLOW_BUY_URL || "https://setutechnology.com/products/workflow"}`,
-      `then redeem it in Admin → Subscription: ${appUrl()}/admin/subscription`,
-      "",
-      "Need more users or an invoice? Reply to this email.",
-      "",
-      "— Setu Technology",
-    ].join("\n"),
+    renderEmail({
+      preheader: state.licensed
+        ? `Renew before ${date} to keep editing. Your data is always safe.`
+        : "Your workspace is read-only until you renew. Nothing has been deleted.",
+      heading: state.licensed
+        ? `Your plan ends ${left <= 1 ? "tomorrow" : `in ${left} days`}`
+        : "Your plan has ended",
+      greeting: `Hi ${owner.firstName},`,
+      paragraphs: state.licensed
+        ? [
+            `The Setu Workflow plan for **${firm.displayName}** ends on **${date}**.`,
+            "Renew before then to keep your team working without interruption. If it lapses, your workspace becomes read-only — everyone can still view and export, and nothing is deleted.",
+          ]
+        : [
+            `The Setu Workflow plan for **${firm.displayName}** ended on **${date}**.`,
+            "Your workspace is now read-only: your team can view and export, but not make changes. Nothing has been deleted — renew and everything carries on where you left it.",
+          ],
+      button: { label: "Renew your plan", url: buyUrl },
+      steps: {
+        title: "How to renew",
+        items: [
+          "Buy a key on setutechnology.com — monthly or yearly.",
+          `Sign in as the account owner and open **Admin → Subscription** (${appUrl()}/admin/subscription).`,
+          "Paste the key and press Redeem. New days are added after your current plan ends.",
+        ],
+      },
+      details: [
+        ["Firm", firm.displayName],
+        ["Plan users", String(state.seats ?? "—")],
+        [state.licensed ? "Plan ends" : "Plan ended", date],
+      ],
+      note: "Need more users, an invoice or help renewing? Just reply to this email.",
+    }),
   );
   await db.planReminder.create({
     data: {

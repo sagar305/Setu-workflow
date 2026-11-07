@@ -11,6 +11,7 @@ import { limited } from "./auth";
 import { hashPassword, newToken, tokenHash, verifyPassword } from "./crypto";
 import { AppError, invariant } from "./errors";
 import { appUrl, sendEmail } from "./mail";
+import { renderEmail } from "./email-template";
 import { decryptTotpSecret, encryptTotpSecret, newTotpSecret, otpauthUrl, verifyTotp } from "./totp";
 import { password as passwordRule } from "./validation";
 
@@ -237,8 +238,26 @@ export async function inviteStaff(by: Staff | null, input: unknown, options: { e
   if (options.email !== false)
     await sendEmail(
       data.email,
-      "You're invited to the Setu Workflow console",
-      `${by ? by.name : "Setu"} invited you to the Setu Workflow owner console.\n\nSet your password: ${link}\n\nThe link works once and expires in ${INVITE_HOURS} hours. At your first sign-in you'll link an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password or similar).`,
+      "You're invited to the Setu Workflow admin console",
+      renderEmail({
+        preheader: "Set your password to join the Setu Workflow admin console.",
+        heading: "Join the Setu Workflow admin console",
+        greeting: `Hi ${data.name},`,
+        paragraphs: [
+          `${by ? `**${by.name}**` : "The Setu team"} has invited you to the Setu Workflow admin console, where the Setu team manages customer accounts, license keys and plan reminders.`,
+          "Set your password to accept the invitation.",
+        ],
+        button: { label: "Set my password", url: link },
+        steps: {
+          title: "At your first sign-in",
+          items: [
+            "Sign in with your email and the password you choose.",
+            "Scan the QR code with an authenticator app — Google Authenticator, Microsoft Authenticator or 1Password.",
+            "Enter the 6-digit code it shows. You'll need a fresh code each time you sign in.",
+          ],
+        },
+        note: `This link works once and expires in ${INVITE_HOURS} hours. Keep the console address private.`,
+      }),
     );
   return { link, message: `Invite sent to ${data.email}.` };
 }
@@ -261,8 +280,18 @@ export async function resetStaff(by: Staff | null, adminId: string, options: { e
   if (options.email !== false)
     await sendEmail(
       admin.email,
-      "Reset your Setu Workflow console sign-in",
-      `Set a new password for the Setu Workflow owner console: ${link}\n\nThe link works once and expires in ${INVITE_HOURS} hours. You'll link your authenticator app again at your next sign-in.`,
+      "Reset your Setu Workflow admin console sign-in",
+      renderEmail({
+        preheader: "Set a new password for the Setu Workflow admin console.",
+        heading: "Reset your console sign-in",
+        greeting: `Hi ${admin.name},`,
+        paragraphs: [
+          `${by ? `**${by.name}**` : "The Setu team"} has reset your sign-in for the Setu Workflow admin console. You've been signed out everywhere.`,
+          "Choose a new password, then link your authenticator app again at your next sign-in.",
+        ],
+        button: { label: "Choose a new password", url: link },
+        note: `This link works once and expires in ${INVITE_HOURS} hours. If you didn't expect this, tell the Setu team straight away.`,
+      }),
     );
   return { link, message: `Reset link sent to ${admin.email}.` };
 }
