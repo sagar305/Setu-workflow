@@ -1,0 +1,52 @@
+/* Setu owner console — same look as the Setu Retail admin. */
+.console{min-height:100vh;background:#ECEAE3;color:var(--ink)}
+.console .card{border-radius:16px;border-color:#DCD7CB;box-shadow:none}
+.console-bar{background:var(--ink);color:#fff}
+.console-bar-top,.console-bar nav{max-width:1180px;margin:0 auto;padding:0 18px}
+.console-bar-top{display:flex;align-items:center;gap:12px;padding-top:10px;padding-bottom:10px}
+.console-mark{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;background:var(--saffron);color:var(--ink);flex-shrink:0}.console-mark.big{width:46px;height:46px;border-radius:12px;margin-bottom:18px}
+.console-title{font-weight:600}.console-title span,.saffron{color:var(--saffron)}
+.console-who{margin-left:auto;font-size:14px;color:#D9DCEE}
+.console-signout{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border-radius:10px;border:0;background:none;color:#fff;font-size:14px;font-weight:600}.console-signout:hover{background:#ffffff1a}
+.console-bar nav{display:flex;gap:4px;overflow-x:auto;padding-left:8px}
+.console-bar nav a{display:flex;align-items:center;min-height:46px;padding:0 14px;border-bottom:3px solid transparent;font-size:15px;font-weight:600;color:#B9BDD6;white-space:nowrap}.console-bar nav a:hover{color:#fff}.console-bar nav a.active{color:#fff;border-bottom-color:var(--saffron)}
+.console-main{max-width:1180px;margin:0 auto;padding:28px 18px 60px;display:flex;flex-direction:column;gap:18px}
+.console-heading h1{font-size:34px;letter-spacing:-.8px}.console-heading p{margin-top:6px;font-size:16px}
+.console-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.console-stat{display:flex;flex-direction:column;gap:6px;padding:18px 20px}.console-stat span{font-size:14px;color:var(--muted)}.console-stat strong{font-size:28px;font-weight:600}.console-stat.link:hover,.console-stat.active{border-color:var(--indigo)}
+.console-two{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.console-section{padding:24px 26px}.console-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.console-section h2{font-size:20px}
+.console-list{list-style:none;margin:0 0 12px;padding:0}.console-list li{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line)}.console-list li:last-child{border:0}
+.console-action-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}.console-action-row .field{margin-bottom:0}.console-action-row .button{min-height:44px}
+.remind-all .field{max-width:220px}
+.console .field>span{font-size:14px;font-weight:600}
+.console input:not([type=checkbox]),.console select{border-radius:10px;border-color:#CFC8B8;min-height:46px}
+.console .button{border-radius:10px}.console .button.secondary{border-color:var(--indigo);color:var(--indigo)}
+.button.danger{background:#fff;border-color:#e4b4ae;color:#9a302a}.button.danger:hover{background:#fbe9e7}
+.console-filter-bar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}.console-filter-bar .field{margin:0;min-width:220px}.console-filter-bar .field.grow{flex:1;min-width:260px}.console-filter-bar .button{min-height:46px}
+.account-rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.account-row{display:grid;grid-template-columns:1.4fr 1fr 1fr;align-items:center;gap:16px;padding:16px 22px}.account-row:hover{border-color:var(--indigo)}
+.account-name,.account-meta{display:flex;flex-direction:column;gap:2px}.account-name strong{font-size:17px}.account-name small{color:var(--muted);font-size:14px}
+.account-plan{display:flex;align-items:center;gap:10px}.account-meta{text-align:right;font-size:14px;color:var(--muted)}
+.status.trial{background:#E6E8F5;color:var(--indigo)}.status.ended{background:#fbe9e7;color:#9a302a}.error-text{color:#b42318}.ok-text{color:#195d3a}
+.console-rows{list-style:none;margin:0;padding:0}.console-rows li{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}.console-rows li:last-child{border:0}
+.console-rows li>span:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}.console-rows small{color:var(--muted);font-size:13px}
+.row-end{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.console-feed{list-style:none;margin:0;padding:0;overflow:hidden}.console-feed li{display:flex;flex-direction:column;gap:3px;padding:14px 24px;border-bottom:1px solid var(--line)}.console-feed li:last-child{border:0}.console-feed small{font-size:14px;color:var(--muted)}
+.firm-link{color:var(--indigo);font-weight:600}.firm-link:hover{text-decoration:underline}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);margin-top:-6px}
+.console-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.quick-action{display:inline-flex;flex-direction:column;gap:4px}.quick-action small{font-size:12px;max-width:260px}
+.console-dl{margin:0 0 14px}.console-row{display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}.console-row dt{color:var(--muted);min-width:130px}.console-row dd{margin:0;word-break:break-all}
+.usage{margin:12px 0;font-size:14px}.usage>div{display:flex;justify-content:space-between;margin-bottom:6px}.usage-bar{display:block;height:8px;border-radius:99px;background:#ECEAE3;overflow:hidden}.usage-bar span{display:block;height:100%;background:var(--indigo);border-radius:99px}.usage-bar span.over{background:#b42318}
+.account-owner{font-size:10px;font-weight:600;color:#7a4b0c;margin-left:8px;background:#fdecd3;padding:2px 6px;border-radius:3px;vertical-align:middle}
+.console-modal{position:fixed;inset:0;background:#0E112480;display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.console-modal-card{width:100%;max-width:460px;max-height:92vh;overflow:auto;padding:24px 26px}.console-modal-card.wide{max-width:760px}.console-modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.segmented{display:inline-flex;border:1px solid #CFC8B8;border-radius:10px;padding:3px;background:#F7F5F0;margin-bottom:16px}.segmented button{border:0;background:none;padding:8px 14px;border-radius:8px;font-size:14px;color:var(--muted)}.segmented button.on{background:#fff;color:var(--indigo);font-weight:650;box-shadow:0 1px 3px #0E112420}
+.amount{display:flex;gap:8px}.amount select{width:92px;flex-shrink:0}
+.issued-key{display:flex;gap:10px;align-items:center;background:#F7F5F0;border:1px dashed var(--saffron);border-radius:10px;padding:12px 14px;margin:12px 0}.issued-key code{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--indigo);word-break:break-all;flex:1;letter-spacing:.4px}
+.team-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}.team-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 24px;flex-wrap:wrap}.team-row>span:first-child{display:flex;flex-direction:column;gap:2px}.team-row strong{font-size:17px}.team-row small{color:var(--muted);font-size:14px}
+.invite-row .field{flex:1;min-width:220px}
+.console-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#ECEAE3}.console-login-card{width:100%;max-width:420px;padding:34px}.console-login-card h1{font-size:26px;margin-bottom:6px}.console-login-card>.muted{margin-bottom:24px}
+.console-signin{display:flex;flex-direction:column}.console-signin .field{margin-bottom:16px}.button.wide{width:100%}.text-button.wide{margin-top:8px}
+.totp-setup{margin-bottom:12px}.totp-qr{width:190px;margin:14px auto;background:#fff;padding:8px;border:1px solid var(--line);border-radius:12px}.totp-qr svg{display:block;width:100%;height:auto}.totp-setup code{font-size:12px;word-break:break-all}
+@media(max-width:900px){.console-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.console-two{grid-template-columns:1fr}.account-row{grid-template-columns:1fr}.account-meta{text-align:left}.console-heading h1{font-size:28px}.console-rows li{flex-direction:column;align-items:flex-start}.row-end{justify-content:flex-start}}

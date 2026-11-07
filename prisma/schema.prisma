@@ -51,6 +51,7 @@ model Firm {
   engagementTypes             EngagementType[]
   engagementFields            EngagementCustomFieldDefinition[]
   licenseIssues               LicenseIssue[]
+  planReminders               PlanReminder[]
 
   @@map("firms")
 }
@@ -1263,16 +1264,23 @@ model CapacityAdjustment {
 
 // Setu staff who run the owner console. Not tenant users; created from the CLI.
 model PlatformAdmin {
-  id           String             @id @default(uuid()) @db.Uuid
-  email        String             @unique
-  name         String
-  passwordHash String             @map("password_hash")
-  active       Boolean            @default(true)
-  lastLoginAt  DateTime?          @map("last_login_at")
-  createdAt    DateTime           @default(now()) @map("created_at")
-  sessions     PlatformSession[]
-  issuedKeys   LicenseIssue[]
-  auditLogs    PlatformAuditLog[]
+  id            String             @id @default(uuid()) @db.Uuid
+  email         String             @unique
+  name          String
+  passwordHash  String?            @map("password_hash")
+  totpSecretEnc String?            @map("totp_secret_enc")
+  totpLastStep  Int?               @map("totp_last_step")
+  failedLogins  Int                @default(0) @map("failed_logins")
+  lockedUntil   DateTime?          @map("locked_until")
+  invitedById   String?            @map("invited_by_id") @db.Uuid
+  active        Boolean            @default(true)
+  lastLoginAt   DateTime?          @map("last_login_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  sessions      PlatformSession[]
+  issuedKeys    LicenseIssue[]
+  auditLogs     PlatformAuditLog[]
+  tokens        PlatformToken[]
+  reminders     PlanReminder[]
 
   @@map("platform_admins")
 }
@@ -1316,9 +1324,41 @@ model PlatformAuditLog {
   action    String
   firmId    String?        @map("firm_id") @db.Uuid
   metadata  Json           @default("{}")
+  ip        String?
   createdAt DateTime       @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([firmId])
   @@map("platform_audit_logs")
+}
+
+model PlatformToken {
+  id            String        @id @default(uuid()) @db.Uuid
+  adminId       String        @map("admin_id") @db.Uuid
+  admin         PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  purpose       String
+  tokenHash     String        @unique @map("token_hash")
+  totpSecretEnc String?       @map("totp_secret_enc")
+  expiresAt     DateTime      @map("expires_at")
+  usedAt        DateTime?     @map("used_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  @@map("platform_tokens")
+}
+
+model PlanReminder {
+  id            String         @id @default(uuid()) @db.Uuid
+  firmId        String         @map("firm_id") @db.Uuid
+  firm          Firm           @relation(fields: [firmId], references: [id])
+  licenseEndsAt DateTime       @map("license_ends_at")
+  daysBefore    Int            @map("days_before")
+  kind          String
+  sentTo        String         @map("sent_to")
+  adminId       String?        @map("admin_id") @db.Uuid
+  admin         PlatformAdmin? @relation(fields: [adminId], references: [id])
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  @@index([firmId, createdAt])
+  @@index([createdAt])
+  @@map("plan_reminders")
 }

@@ -74,6 +74,7 @@ The order id must be unique per sale; the same id always produces the same key.
 - `NEXT_PUBLIC_WORKFLOW_BUY_URL` — optional; where "Buy a key" links
   (default `https://setutechnology.com/products/workflow`).
 - `TRIAL_CONTACT_EMAIL` — also used as the "Contact sales" address.
+- `PLATFORM_ROUTE_SECRET`, `PLATFORM_SECRET_KEY` — the owner console (below).
 
 ## Not done here
 
@@ -81,3 +82,45 @@ setutechnology.com does not yet sell Workflow keys. The website needs a copy of
 `src/lib/license-key.ts`, a Workflow checkout (Cashfree / PayPal, as for QR
 Menu) and a key email, using the same `WORKFLOW_LICENSE_SECRET`. Until then,
 keys can be issued with `pnpm license issue`.
+
+## Setu owner console (super admin)
+
+Setu's own staff manage every firm from the owner console, modelled on the
+Setu Retail admin. It lives only at `/console/<PLATFORM_ROUTE_SECRET>`; any
+other path, and every `/api/platform/*` call without a console session,
+answers 404. With the variable unset the console is off.
+
+**Sign-in:** email + password, then a 6-digit code from an authenticator app
+(linked by QR code at the first sign-in). Codes work once. Five wrong attempts
+lock the account for 15 minutes. Sessions last 8 hours.
+
+**Bootstrap:** `pnpm console:admin create you@setutechnology.com "Your Name"`
+prints a one-time set-password link. After that, invite colleagues from the
+Team page. `pnpm console:admin reset <email>` recovers someone locked out of
+their authenticator.
+
+| Page      | What it does |
+| --------- | ------------ |
+| Dashboard | Accounts, on trial, paying, ending in 14 days, plan ended, trial ended, locked, sign-ups this month; paying firms by plan; plan reminders with "Remind them now". |
+| Accounts  | Search by firm, owner, email or workspace ID; filter by state. Each account: owner & contact, plan & usage, users, keys redeemed, contact-sales keys, reminders sent, Setu team activity. Actions: send plan reminder, add free days, issue contact-sales key, send the owner a password reset, lock / unlock. |
+| Keys      | Contact-sales keys issued (show again, cancel unused) and every redeemed key, website ones included. |
+| Activity  | Everything the Setu team did and the daily reminder job, filterable by what and who, with IP when `TRUST_PROXY=true`. |
+| Team      | Staff, invite by email, reset sign-in, disable / enable. |
+
+**Contact-sales keys** are issued against a payment reference (unique, so one
+payment can't produce two keys) with the amount received. Two kinds:
+
+- **Plan** — new, renewal or bigger: days (monthly, yearly or custom) and the
+  plan's users.
+- **Additional users** — adds users to a running plan without changing its end
+  date (a key with 0 days).
+
+Apply it to the firm at once, or untick and send the key for the account owner
+to redeem in Admin → Subscription.
+
+**Plan reminders** are emailed to the account owner automatically at 14, 7 and
+1 days before the plan ends, by the daily cron job (`/api/cron/cleanup`), once
+each per plan period.
+
+The console shows plan, contact and usage counts only — never a firm's
+clients, engagements or time entries.
