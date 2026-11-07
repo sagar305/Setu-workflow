@@ -91,7 +91,7 @@ export async function requestTrial(input: unknown, clientKey: string) {
   }
   if (destination) {
     try {
-      await sendLink(data.email, "invite", raw, destination.displayName);
+      await sendLink(data.email, "invite", raw, destination.displayName, { signup: true });
     } catch {
       console.error(
         "Trial activation email delivery failed; check Resend configuration. The signup form can resend it.",
