@@ -36,7 +36,7 @@ export default async function WorkspaceLayout({
           hasPermission(user, "engagements.view")
         }
         assignments={hasPermission(user, "allocations.manage_team")}
-        adminHref={firstAdmin ? `/admin/${firstAdmin}` : user.isSuperAdmin ? "/admin/subscription" : undefined}
+        adminHref={firstAdmin ? `/admin/${firstAdmin}` : user.isAccountOwner ? "/admin/subscription" : undefined}
       />
       <div className="workspace">
         <header className="topbar">

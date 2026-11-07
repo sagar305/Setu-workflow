@@ -141,7 +141,7 @@ export async function login(input: unknown, clientKey: string) {
     // The password is already verified, so saying why is not an enumeration risk.
     invariant(
       hasAccess(user),
-      "Your firm's super admin has not given you access to Setu Workflow yet. Ask them to assign you a seat in Admin → Subscription.",
+      "Your firm's account owner has not given you access to Setu Workflow yet. Ask them to assign you a seat in Admin → Subscription.",
       403,
     );
     const token = newToken();
@@ -304,7 +304,7 @@ export async function consumeToken(kind: "invite" | "reset", input: unknown) {
       } else assertTrialWritable(user.firm);
       invariant(
         hasAccess(user),
-        "Your firm's super admin has not given you access to Setu Workflow yet.",
+        "Your firm's account owner has not given you access to Setu Workflow yet.",
         403,
       );
     }

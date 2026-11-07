@@ -34,7 +34,7 @@ export function trialState(firm: TrialFirm, now = new Date()) {
  * The firm's overall access. A redeemed license takes over from the trial:
  *
  * - licensed: the subscription is running. Writable while seat holders fit
- *   the plan; over the limit the workspace is read-only until the super admin
+ *   the plan; over the limit the workspace is read-only until the account owner
  *   removes access from someone.
  * - lapsed: a subscription existed and ended. Read-only until a key is redeemed.
  * - trial: no license yet; the 15-day trial rules apply.
@@ -71,9 +71,9 @@ export function assertTrialWritable(firm: AccessFirm, now = new Date()) {
   invariant(
     false,
     state.overSeats
-      ? `More people have access than your plan's ${state.seats} users. Your workspace is read-only until your super admin removes access in Admin → Subscription.`
+      ? `More people have access than your plan's ${state.seats} users. Your workspace is read-only until your account owner removes access in Admin → Subscription.`
       : state.lapsed
-        ? "Your firm's Setu Workflow subscription has ended. Your workspace is read-only; your super admin can redeem a license key in Admin → Subscription."
+        ? "Your firm's Setu Workflow subscription has ended. Your workspace is read-only; your account owner can redeem a license key in Admin → Subscription."
         : "Your firm's trial is not active. Your workspace is read-only; view Trial details to continue.",
     403,
   );

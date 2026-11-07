@@ -47,7 +47,8 @@ test("rejects forged, tampered, truncated and foreign keys", () => {
 });
 
 test("refuses to issue out-of-range keys", () => {
-  expect(() => issueLicenseKey("x", 0, 3, secret)).toThrow();
+  expect(() => issueLicenseKey("x", -1, 3, secret)).toThrow();
+  expect(readLicenseKey(issueLicenseKey("x", 0, 2, secret), secret)).toMatchObject({ days: 0, seats: 2 });
   expect(() => issueLicenseKey("x", 30, 0, secret)).toThrow();
   expect(() => issueLicenseKey("x", 30, MAX_LICENSE_SEATS + 1, secret)).toThrow();
   expect(() => issueLicenseKey("", 30, 3, secret)).toThrow();

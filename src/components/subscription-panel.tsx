@@ -19,7 +19,7 @@ type SeatUser = {
   email: string;
   status: string;
   hasSeat: boolean;
-  isSuperAdmin: boolean;
+  isAccountOwner: boolean;
   role: { roleName: string };
 };
 type Redemption = {
@@ -33,7 +33,7 @@ type Props = {
   state: AccessState;
   canManage: boolean;
   keysEnabled: boolean;
-  superAdmin: { name: string; email: string } | null;
+  accountOwner: { name: string; email: string } | null;
   users: SeatUser[];
   redemptions: Redemption[];
   timezone: string;
@@ -49,7 +49,7 @@ function date(value: string, timezone: string) {
 }
 
 export function SubscriptionPanel(props: Props) {
-  const { state, canManage, keysEnabled, superAdmin, users, redemptions, timezone } = props;
+  const { state, canManage, keysEnabled, accountOwner, users, redemptions, timezone } = props;
   const router = useRouter();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -114,8 +114,8 @@ export function SubscriptionPanel(props: Props) {
             </dd>
           </div>
           <div>
-            <dt>Super admin</dt>
-            <dd>{superAdmin ? superAdmin.name : "—"}</dd>
+            <dt>Account owner</dt>
+            <dd>{accountOwner ? accountOwner.name : "—"}</dd>
           </div>
         </dl>
       </section>
@@ -123,7 +123,7 @@ export function SubscriptionPanel(props: Props) {
       {state.overSeats && (
         <p className="notice error" role="alert">
           {seatHolders} people have access but your plan covers {state.seats}. Your workspace is
-          read-only until {canManage ? "you remove" : "your super admin removes"} access from{" "}
+          read-only until {canManage ? "you remove" : "your account owner removes"} access from{" "}
           {seatHolders - (state.seats ?? 0)}.
         </p>
       )}
@@ -167,7 +167,7 @@ export function SubscriptionPanel(props: Props) {
             )
           ) : (
             <p className="muted small">
-              Only your firm&rsquo;s super admin{superAdmin ? ` (${superAdmin.name})` : ""} can
+              Only your firm&rsquo;s account owner{accountOwner ? ` (${accountOwner.name})` : ""} can
               redeem keys and choose who has access.
             </p>
           )}
@@ -251,7 +251,7 @@ export function SubscriptionPanel(props: Props) {
                         <strong>
                           {u.firstName} {u.lastName}
                           {u.id === props.ownId && <span className="you">You</span>}
-                          {u.isSuperAdmin && <span className="super-admin">Super admin</span>}
+                          {u.isAccountOwner && <span className="account-owner">Account owner</span>}
                         </strong>
                         <small>{u.email}</small>
                       </div>
@@ -267,7 +267,7 @@ export function SubscriptionPanel(props: Props) {
                     </span>
                   </td>
                   <td>
-                    {canManage && !u.isSuperAdmin && (
+                    {canManage && !u.isAccountOwner && (
                       <button
                         className="button secondary seat-button"
                         disabled={busy === u.id}

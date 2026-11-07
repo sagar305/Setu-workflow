@@ -23,7 +23,7 @@ const key = (days = 30, seats = 3) =>
 const tokenFor = (email: string) =>
   mail.sent.filter((m) => m.to === email && m.kind === "invite").at(-1)!.token;
 
-/** A trial firm with an activated super admin and `extra` activated Firm Admin colleagues. */
+/** A trial firm with an activated account owner and `extra` activated Firm Admin colleagues. */
 async function firm(extra = 0) {
   const email = `${randomUUID()}@sub.test.invalid`;
   await requestTrial(
@@ -59,13 +59,13 @@ beforeAll(() => {
 });
 afterAll(() => db.$disconnect());
 
-test("the signup administrator is the firm's only super admin", async () => {
+test("the signup administrator is the firm's only account owner", async () => {
   const { admin, colleagues } = await firm(1);
-  expect(admin.isSuperAdmin).toBe(true);
-  expect((await db.user.findUniqueOrThrow({ where: { id: colleagues[0].id } })).isSuperAdmin).toBe(false);
+  expect(admin.isAccountOwner).toBe(true);
+  expect((await db.user.findUniqueOrThrow({ where: { id: colleagues[0].id } })).isAccountOwner).toBe(false);
 });
 
-test("only the super admin redeems; keys add days after the trial and are single-use", async () => {
+test("only the account owner redeems; keys add days after the trial and are single-use", async () => {
   const { session, admin, colleagues } = await firm(1);
   const k = key(30);
   await expect(redeemLicenseKey(colleagues[0].session, { key: k })).rejects.toMatchObject({ status: 403 });
@@ -114,7 +114,7 @@ test("a licensed plan limits seats: invites, re-activation and seat grants need 
   await setSeat(session, fourth.id, { hasSeat: false });
   await setSeat(session, colleagues[0].id, { hasSeat: true });
   expect(await principal(await login({ email: colleagues[0].email, password }, randomUUID()))).toBeTruthy();
-  // Only the super admin manages seats, and they always keep their own.
+  // Only the account owner manages seats, and they always keep their own.
   await expect(setSeat(colleagues[1].session, fourth.id, { hasSeat: true })).rejects.toMatchObject({ status: 403 });
   await expect(setSeat(session, admin.id, { hasSeat: false })).rejects.toThrow("always keeps");
   // Re-activating an inactive seat holder needs a free seat.
@@ -127,7 +127,7 @@ test("a licensed plan limits seats: invites, re-activation and seat grants need 
   expect(view.canManage).toBe(true);
 });
 
-test("too many seat holders make the workspace read-only until the super admin removes access", async () => {
+test("too many seat holders make the workspace read-only until the account owner removes access", async () => {
   const { session, colleagues } = await firm(4); // 5 seat holders during the trial
   await redeemLicenseKey(session, { key: key(30, 3) });
   await expect(office(session)).rejects.toMatchObject({ status: 403 });
@@ -158,13 +158,13 @@ test("a lapsed subscription is read-only, and redeeming a key from today restore
   await expect(office(session)).resolves.toMatchObject({ message: "Office saved." });
 });
 
-test("other administrators cannot demote or deactivate the super admin", async () => {
+test("other administrators cannot demote or deactivate the account owner", async () => {
   const { admin, colleagues } = await firm(1);
   const roles = await db.role.findMany({ where: { firmId: admin.firmId } });
   const partner = roles.find((r) => r.roleName === "Partner")!;
   const edit = { firstName: "Super", lastName: "Admin", weeklyCapacityHours: 40, primaryOfficeId: null, managerId: null };
-  await expect(editUser(colleagues[0].session, admin.id, { ...edit, roleId: partner.id, status: "Active" })).rejects.toThrow("super admin");
-  await expect(editUser(colleagues[0].session, admin.id, { ...edit, roleId: admin.roleId, status: "Inactive" })).rejects.toThrow("super admin");
+  await expect(editUser(colleagues[0].session, admin.id, { ...edit, roleId: partner.id, status: "Active" })).rejects.toThrow("account owner");
+  await expect(editUser(colleagues[0].session, admin.id, { ...edit, roleId: admin.roleId, status: "Inactive" })).rejects.toThrow("account owner");
   await expect(editUser(colleagues[0].session, admin.id, { ...edit, roleId: admin.roleId, status: "Active" })).resolves.toBeTruthy();
 });
 

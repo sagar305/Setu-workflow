@@ -2,7 +2,7 @@
 // Setu Workflow license keys.
 //
 // A paid order on setutechnology.com (or a quote agreed with sales) is turned
-// into a key the firm's super admin pastes into Admin → Subscription. Redeeming
+// into a key the firm's account owner pastes into Admin → Subscription. Redeeming
 // it extends the firm's subscription by the key's days and sets how many users
 // it covers.
 //
@@ -46,6 +46,11 @@ export const MAX_LICENSE_SEATS = 1000;
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
+/**
+ * A plan key adds days (1 or more) and sets the plan's users. A key with 0
+ * days is an additional-users top-up: it adds `seats` users to a plan that is
+ * already running, without changing its end date.
+ */
 export type License = {
   /** Hex. Stable per order; stored on redemption to refuse a second one. */
   keyId: string;
@@ -121,8 +126,8 @@ export function issueLicenseKey(
   secret: string,
 ): string {
   if (!orderId) throw new Error("An order id is required.");
-  if (!Number.isInteger(days) || days < 1 || days > MAX_LICENSE_DAYS) {
-    throw new Error(`License days must be a whole number from 1 to ${MAX_LICENSE_DAYS}.`);
+  if (!Number.isInteger(days) || days < 0 || days > MAX_LICENSE_DAYS) {
+    throw new Error(`License days must be a whole number from 0 to ${MAX_LICENSE_DAYS}.`);
   }
   if (!Number.isInteger(seats) || seats < 1 || seats > MAX_LICENSE_SEATS) {
     throw new Error(`License seats must be a whole number from 1 to ${MAX_LICENSE_SEATS}.`);
@@ -170,7 +175,7 @@ export function readLicenseKey(input: string, secret: string): License | null {
   if (payload.readUInt8(0) !== VERSION) return null;
   const days = payload.readUInt16BE(1);
   const seats = payload.readUInt16BE(3);
-  if (days < 1 || days > MAX_LICENSE_DAYS) return null;
+  if (days > MAX_LICENSE_DAYS) return null;
   if (seats < 1 || seats > MAX_LICENSE_SEATS) return null;
   return { keyId: payload.subarray(5).toString("hex"), days, seats };
 }

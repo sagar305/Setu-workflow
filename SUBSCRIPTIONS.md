@@ -1,4 +1,4 @@
-# Subscriptions, license keys and the super admin
+# Subscriptions, license keys and the account owner
 
 Setu Workflow is sold the same way as Setu QR Menu: the buyer pays on
 setutechnology.com, receives a **license key**, and pastes it into the app.
@@ -16,18 +16,18 @@ sales issues a key carrying the agreed number of users. Prices live in
 
 ## Super admin
 
-Each firm has exactly one **super admin**: the administrator who signed up (or,
+Each firm has exactly one **account owner** (called "account owner" before migration `202611070002`): the administrator who signed up (or,
 for firms that existed before this change, the earliest Firm Admin — set by the
-`202611070001_subscriptions` migration). Shown with a "Super admin" badge in
+`202611070001_subscriptions` migration). Shown with a "Account owner" badge in
 Admin → Users.
 
-Only the super admin can:
+Only the account owner can:
 
 - redeem license keys (Admin → Subscription), and
 - give or remove a colleague's access (their **seat**).
 
 Other Firm Admins can see the Subscription page but not change it, and cannot
-deactivate the super admin or change their role. The super admin always keeps
+deactivate the account owner or change their role. The account owner always keeps
 a seat.
 
 ## Access rules
@@ -36,7 +36,7 @@ a seat.
 | ----------------------------- | ---------------------------------------------------------------------- |
 | Trial (no key yet)            | 15-day trial as before; everyone invited has access.                   |
 | Licensed, within seats        | Full access for users with a seat. Users without one cannot sign in.   |
-| Licensed, too many seats      | Read-only until the super admin removes access from enough people.     |
+| Licensed, too many seats      | Read-only until the account owner removes access from enough people.     |
 | Subscription ended            | Read-only (view and export). Redeeming a key restores access.          |
 | Older firm, no trial, no key  | Unchanged ongoing access.                                              |
 

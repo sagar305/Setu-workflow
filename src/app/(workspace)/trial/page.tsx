@@ -44,7 +44,7 @@ export default async function TrialPage() {
           {formatPlanPrice(PLAN_PRICES.INTL.monthly, "USD")} or yearly{" "}
           {formatPlanPrice(PLAN_PRICES.IN.yearly, "INR")} /{" "}
           {formatPlanPrice(PLAN_PRICES.INTL.yearly, "USD")}, for {INCLUDED_USERS} users.
-          Your super admin redeems the license key in Admin → Subscription.
+          Your account owner redeems the license key in Admin → Subscription.
         </p>
         <div className="actions">
           <Link className="button primary" href="/admin/subscription">

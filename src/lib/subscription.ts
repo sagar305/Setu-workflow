@@ -11,7 +11,7 @@ import {
   type Principal,
 } from "./auth";
 import { invariant } from "./errors";
-import { readLicenseKey } from "./license-key";
+import { readLicenseKey, type License } from "./license-key";
 import { accessState } from "./trial";
 import { id } from "./validation";
 
@@ -34,9 +34,9 @@ const redeemInput = z.object({
 });
 const seatInput = z.object({ hasSeat: z.boolean() });
 
-/** Who may see the subscription page: the super admin, and firm administrators read-only. */
+/** Who may see the subscription page: the account owner, and firm administrators read-only. */
 export function canViewSubscription(user: Principal) {
-  return user.isSuperAdmin || hasPermission(user, "firm.manage");
+  return user.isAccountOwner || hasPermission(user, "firm.manage");
 }
 
 export async function seatsInUse(tx: Database, firmId: string) {
@@ -72,10 +72,10 @@ export async function readSubscription(token: string | undefined) {
         email: true,
         status: true,
         hasSeat: true,
-        isSuperAdmin: true,
+        isAccountOwner: true,
         role: { select: { roleName: true } },
       },
-      orderBy: [{ isSuperAdmin: "desc" }, { firstName: "asc" }, { id: "asc" }],
+      orderBy: [{ isAccountOwner: "desc" }, { firstName: "asc" }, { id: "asc" }],
     }),
     db.licenseRedemption.findMany({
       where: { firmId: user.firmId, revoked: false },
@@ -84,13 +84,13 @@ export async function readSubscription(token: string | undefined) {
       take: 20,
     }),
   ]);
-  const superAdmin = users.find((u) => u.isSuperAdmin);
+  const accountOwner = users.find((u) => u.isAccountOwner);
   return {
     state: accessState(user.firm),
-    canManage: user.isSuperAdmin,
+    canManage: user.isAccountOwner,
     keysEnabled: licenseSecret() !== null,
-    superAdmin: superAdmin
-      ? { name: `${superAdmin.firstName} ${superAdmin.lastName}`, email: superAdmin.email }
+    accountOwner: accountOwner
+      ? { name: `${accountOwner.firstName} ${accountOwner.lastName}`, email: accountOwner.email }
       : null,
     users,
     redemptions,
@@ -98,21 +98,21 @@ export async function readSubscription(token: string | undefined) {
 }
 
 /**
- * Runs a super-admin change under the firm lock. Unlike tenantMutation it does
+ * Runs a account-owner change under the firm lock. Unlike tenantMutation it does
  * not require a writable workspace: renewing a lapsed plan and removing seats
  * from an over-full one are exactly how a read-only workspace recovers.
  */
-async function superAdminChange<T>(
+async function ownerChange<T>(
   token: string | undefined,
   work: (tx: Database, actor: Principal) => Promise<T>,
 ) {
   const initial = await principal(token);
-  invariant(initial.isSuperAdmin, "Only your firm's super admin can change the subscription.", 403);
+  invariant(initial.isAccountOwner, "Only your firm's account owner can change the subscription.", 403);
   return db.$transaction(
     async (tx) => {
       await lockFirm(tx, initial.firmId);
       const actor = await principal(token, tx);
-      invariant(actor.isSuperAdmin, "Only your firm's super admin can change the subscription.", 403);
+      invariant(actor.isAccountOwner, "Only your firm's account owner can change the subscription.", 403);
       return work(tx, actor);
     },
     { timeout: 30000, maxWait: 10000 },
@@ -120,90 +120,117 @@ async function superAdminChange<T>(
 }
 
 /**
- * Redeems a key bought on setutechnology.com or issued by sales. Days stack
- * onto whatever access is still running (subscription or trial), so buying
- * early never loses time; once it has lapsed they count from today. The key's
- * seat count becomes the plan's.
+ * Applies a license to a firm. Shared by the account owner redeeming a key and
+ * the Setu owner console applying a payment directly. The caller holds the
+ * firm lock.
+ *
+ * - A plan (days >= 1) adds days after whatever is still running (plan or
+ *   trial), or from today once access has ended, and sets the plan's users. A
+ *   plan with fewer users than a running one is refused, so a renewal can't
+ *   silently cut seats.
+ * - A top-up (days = 0) adds users to a running plan and leaves its end date.
+ *
+ * keyId is unique across redemptions, so one key or payment applies once.
  */
-export async function redeemLicenseKey(token: string | undefined, input: unknown) {
-  const { key } = redeemInput.parse(input);
-  const secret = licenseSecret();
-  invariant(secret, "License keys are not enabled on this server yet. Please contact Setu.", 503);
-  const initial = await principal(token);
-  invariant(initial.isSuperAdmin, "Only your firm's super admin can redeem a license key.", 403);
-  await limited("license-redeem", initial.firmId, 10, 3600);
-  const license = readLicenseKey(key, secret);
-  invariant(license, "That license key is not valid. Check it was copied in full.", 400);
+export async function applyLicense(
+  tx: Database,
+  firmId: string,
+  license: License,
+  by: { userId: string | null; source: string; actorLabel?: string },
+) {
+  const existing = await tx.licenseRedemption.findUnique({ where: { keyId: license.keyId } });
+  invariant(
+    !existing?.revoked,
+    "This license key was cancelled after a refund and can no longer be used.",
+    409,
+  );
+  invariant(!existing, "This license key has already been used.", 409);
 
-  return superAdminChange(token, async (tx, actor) => {
-    const existing = await tx.licenseRedemption.findUnique({ where: { keyId: license.keyId } });
+  const firm = await tx.firm.findUniqueOrThrow({ where: { id: firmId } });
+  const state = accessState(firm);
+  const topUp = license.days === 0;
+  let newEnd: Date;
+  let seats: number;
+  if (topUp) {
     invariant(
-      !existing?.revoked,
-      "This license key was cancelled after a refund and can no longer be used.",
+      state.licensed && firm.licenseExpiresAt && state.seats !== null,
+      "Additional users can only be added to a plan that is running. Activate a plan first.",
       409,
     );
-    invariant(!existing, "This license key has already been used.", 409);
-
-    const firm = await tx.firm.findUniqueOrThrow({ where: { id: actor.firmId } });
-    const state = accessState(firm);
-    // A smaller key would quietly cut a running plan's users. Renewals for
-    // bigger firms are arranged with sales, who issue a key with their count.
+    newEnd = firm.licenseExpiresAt;
+    seats = state.seats + license.seats;
+  } else {
     invariant(
       !state.licensed || state.seats === null || license.seats >= state.seats,
       `This key covers ${license.seats} users, but your current plan covers ${state.seats}. Contact Setu sales to renew for ${state.seats} users.`,
       409,
     );
-
-    const now = new Date();
-    const running = [now.getTime()];
+    const running = [Date.now()];
     if (firm.licenseExpiresAt) running.push(firm.licenseExpiresAt.getTime());
     if (firm.isTrial && firm.trialEndsAt) running.push(firm.trialEndsAt.getTime());
-    const newEnd = new Date(Math.max(...running) + license.days * DAY_MS);
+    newEnd = new Date(Math.max(...running) + license.days * DAY_MS);
+    seats = license.seats;
+  }
 
-    await tx.licenseRedemption.create({
-      data: {
-        keyId: license.keyId,
-        firmId: actor.firmId,
-        userId: actor.id,
-        days: license.days,
-        seats: license.seats,
-        previousExpiresAt: firm.licenseExpiresAt,
-        newExpiresAt: newEnd,
-      },
-    });
-    await tx.firm.update({
-      where: { id: actor.firmId },
-      data: { licenseExpiresAt: newEnd, licensedSeats: license.seats },
-    });
-    await audit(tx, actor.firmId, actor.id, "firm.license_redeemed", "Firm", actor.firmId, {
+  await tx.licenseRedemption.create({
+    data: {
+      keyId: license.keyId,
+      firmId,
+      userId: by.userId,
       days: license.days,
       seats: license.seats,
-      previousEnd: firm.licenseExpiresAt?.toISOString() ?? null,
-      newEnd: newEnd.toISOString(),
-    });
-    const used = await seatsInUse(tx, actor.firmId);
-    const over = used - license.seats;
-    return {
-      daysAdded: license.days,
-      seats: license.seats,
-      licenseEndsAt: newEnd.toISOString(),
-      message:
-        `License key redeemed: ${license.days} days for ${license.seats} users added.` +
-        (over > 0
-          ? ` ${used} people currently have access — remove access from ${over} to keep editing.`
-          : ""),
-    };
+      previousExpiresAt: firm.licenseExpiresAt,
+      newExpiresAt: newEnd,
+    },
   });
+  await tx.firm.update({ where: { id: firmId }, data: { licenseExpiresAt: newEnd, licensedSeats: seats } });
+  await audit(tx, firmId, by.userId, topUp ? "firm.users_added" : "firm.license_redeemed", "Firm", firmId, {
+    source: by.source,
+    ...(by.actorLabel ? { by: by.actorLabel } : {}),
+    days: license.days,
+    seats: license.seats,
+    planSeats: seats,
+    previousSeats: firm.licensedSeats,
+    previousEnd: firm.licenseExpiresAt?.toISOString() ?? null,
+    newEnd: newEnd.toISOString(),
+  });
+  const used = await seatsInUse(tx, firmId);
+  const over = used - seats;
+  return {
+    daysAdded: license.days,
+    seats,
+    licenseEndsAt: newEnd.toISOString(),
+    message:
+      (topUp
+        ? `${license.seats} more user${license.seats === 1 ? "" : "s"} added: your plan now covers ${seats}.`
+        : `License key redeemed: ${license.days} days for ${seats} users added.`) +
+      (over > 0 ? ` ${used} people currently have access — remove access from ${over} to keep editing.` : ""),
+  };
+}
+
+/** Redeems a key bought on setutechnology.com or issued by Setu sales. */
+export async function redeemLicenseKey(token: string | undefined, input: unknown) {
+  const { key } = redeemInput.parse(input);
+  const secret = licenseSecret();
+  invariant(secret, "License keys are not enabled on this server yet. Please contact Setu.", 503);
+  const initial = await principal(token);
+  invariant(initial.isAccountOwner, "Only your firm's account owner can redeem a license key.", 403);
+  await limited("license-redeem", initial.firmId, 10, 3600);
+  const license = readLicenseKey(key, secret);
+  invariant(license, "That license key is not valid. Check it was copied in full.", 400);
+  return ownerChange(token, (tx, actor) =>
+    applyLicense(tx, actor.firmId, license, { userId: actor.id, source: "key" }),
+  );
 }
 
 /** Gives a colleague a seat, or takes it away (which also signs them out). */
 export async function setSeat(token: string | undefined, userId: string, input: unknown) {
   id.parse(userId);
   const { hasSeat } = seatInput.parse(input);
-  return superAdminChange(token, async (tx, actor) => {
+  return ownerChange(token, async (tx, actor) => {
     const target = await tx.user.findFirst({ where: { firmId: actor.firmId, id: userId } });
     invariant(target, "User not found.", 404);
-    invariant(hasSeat || !target.isSuperAdmin, "The super admin always keeps their seat.");
+    invariant(hasSeat || !target.isAccountOwner, "The account owner always keeps their seat.");
     if (target.hasSeat === hasSeat) return { message: "No change." };
     if (hasSeat && target.status !== "Inactive") await assertSeatAvailable(tx, actor);
     await tx.user.update({

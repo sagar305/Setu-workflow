@@ -12,7 +12,7 @@ export default async function SubscriptionPage() {
     return (
       <section className="card placeholder">
         <h1>Access restricted</h1>
-        <p>Only your firm&rsquo;s super admin and administrators can view the subscription.</p>
+        <p>Only your firm&rsquo;s account owner and administrators can view the subscription.</p>
         <Link href="/dashboard">Return to dashboard</Link>
       </section>
     );
