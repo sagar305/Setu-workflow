@@ -1,4 +1,4 @@
-import { assertTrialWritable, TRIAL_DURATION_MS } from "./trial";
+import { accessState, assertTrialWritable, TRIAL_DURATION_MS } from "./trial";
 import { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { newToken, tokenHash, hashPassword, verifyPassword } from "./crypto";
@@ -8,8 +8,13 @@ import { sendLink } from "./mail";
 import type { PermissionKey } from "./permissions";
 
 export type Database = Prisma.TransactionClient;
+// Seat holders count against a licensed plan: Active or Invited users with a seat.
+export const seatHolders = {
+  hasSeat: true,
+  status: { in: ["Active", "Invited"] },
+} satisfies Prisma.UserWhereInput;
 const identityInclude = {
-  firm: true,
+  firm: { include: { _count: { select: { users: { where: seatHolders } } } } },
   primaryOffice: true,
   role: { include: { permissions: true } },
 } as const;
@@ -24,14 +29,29 @@ export async function principal(token: string | undefined, tx: Database = db) {
   invariant(
     user.status === "Active" &&
       user.firm.status === "Active" &&
-      user.role.active,
+      user.role.active &&
+      hasAccess(user),
     "Please log in.",
     401,
   );
   return user;
 }
-export type Principal = Awaited<ReturnType<typeof principal>>;
-export function hasPermission(user: Principal, key: PermissionKey) {
+type LoadedPrincipal = Awaited<ReturnType<typeof principal>>;
+// The seat count is optional so users loaded elsewhere with `firm: true` still fit.
+export type Principal = Omit<LoadedPrincipal, "firm"> & {
+  firm: Omit<LoadedPrincipal["firm"], "_count"> & { _count?: { users: number } };
+};
+/** While a license runs, only seat holders get in. Trials and older firms are not seat-limited. */
+export function hasAccess(user: {
+  hasSeat: boolean;
+  firm: Parameters<typeof accessState>[0];
+}) {
+  return user.hasSeat || !accessState(user.firm).licensed;
+}
+export function hasPermission(
+  user: { role: { permissions: { permissionKey: string }[] } },
+  key: PermissionKey,
+) {
   return user.role.permissions.some((p) => p.permissionKey === key);
 }
 export function requirePermission(user: Principal, key: PermissionKey) {
@@ -117,6 +137,12 @@ export async function login(input: unknown, clientKey: string) {
         user.role.active,
       "Email or password is incorrect.",
       401,
+    );
+    // The password is already verified, so saying why is not an enumeration risk.
+    invariant(
+      hasAccess(user),
+      "Your firm's super admin has not given you access to Setu Workflow yet. Ask them to assign you a seat in Admin → Subscription.",
+      403,
     );
     const token = newToken();
     await tx.session.create({
@@ -249,8 +275,8 @@ export async function consumeToken(kind: "invite" | "reset", input: unknown) {
             data: { usedAt: new Date() },
           });
     invariant(result.count === 1, "This link is invalid or expired.");
-    if (kind === "invite" && user.firm.isTrial) {
-      if (!user.firm.trialStartedAt) {
+    if (kind === "invite") {
+      if (user.firm.isTrial && !user.firm.trialStartedAt) {
         invariant(
           user.role.isDefault &&
             user.role.permissions.some(
@@ -276,6 +302,11 @@ export async function consumeToken(kind: "invite" | "reset", input: unknown) {
           user.firmId,
         );
       } else assertTrialWritable(user.firm);
+      invariant(
+        hasAccess(user),
+        "Your firm's super admin has not given you access to Setu Workflow yet.",
+        403,
+      );
     }
     await tx.user.update({
       where: { id: user.id },

@@ -61,7 +61,7 @@ test("firm signs up, activates, explores, and becomes read-only at expiry", asyn
       "15 days remaining",
     );
     await page
-      .getByRole("link", { name: "Trial details / Contact us to continue" })
+      .getByRole("link", { name: "Trial details" })
       .click();
     await expect(
       page.getByRole("link", { name: "Contact Setu" }),

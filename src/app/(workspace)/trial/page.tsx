@@ -1,20 +1,25 @@
 import Link from "next/link";
 import { currentUser } from "@/lib/session";
-import { trialState } from "@/lib/trial";
+import { accessState } from "@/lib/trial";
+import { INCLUDED_USERS, PLAN_PRICES, formatPlanPrice } from "@/lib/plans";
 import { hasPermission } from "@/lib/auth";
 export default async function TrialPage() {
   const user = await currentUser(),
-    state = trialState(user.firm);
+    state = accessState(user.firm);
   const support = process.env.TRIAL_CONTACT_EMAIL ?? "hello@setutechnology.com";
   const contact =
     support && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(support) ? support : null;
   return (
     <>
-      <h1>Your firm’s trial</h1>
+      <h1>{state.licensed || state.lapsed ? "Your firm’s plan" : "Your firm’s trial"}</h1>
       <section className="card detail-card">
         <h2>{user.firm.displayName}</h2>
         <p>
-          {!state.isTrial
+          {state.licensed
+            ? `Your Setu Workflow subscription is active for ${state.seats} users.`
+            : state.lapsed
+              ? "Your Setu Workflow subscription has ended. Your workspace is read-only and your data is preserved."
+              : !state.isTrial
             ? "Your firm has ongoing access."
             : state.expired
               ? "Your trial has ended. Your workspace is read-only and your data is preserved."
@@ -22,7 +27,7 @@ export default async function TrialPage() {
                 ? "Activate your administrator invitation to start your 15 days."
                 : `${state.daysRemaining} days remaining in your 15-day trial.`}
         </p>
-        {state.endsAt && (
+        {state.endsAt && !state.licensed && !state.lapsed && (
           <p>
             Trial ends:{" "}
             {new Intl.DateTimeFormat("en", {
@@ -33,7 +38,20 @@ export default async function TrialPage() {
             ({user.firm.timezone}).
           </p>
         )}
-        {state.isTrial && (
+        <h3>Plans</h3>
+        <p>
+          Monthly {formatPlanPrice(PLAN_PRICES.IN.monthly, "INR")} /{" "}
+          {formatPlanPrice(PLAN_PRICES.INTL.monthly, "USD")} or yearly{" "}
+          {formatPlanPrice(PLAN_PRICES.IN.yearly, "INR")} /{" "}
+          {formatPlanPrice(PLAN_PRICES.INTL.yearly, "USD")}, for {INCLUDED_USERS} users.
+          Your super admin redeems the license key in Admin → Subscription.
+        </p>
+        <div className="actions">
+          <Link className="button primary" href="/admin/subscription">
+            View subscription
+          </Link>
+        </div>
+        {state.isTrial && !state.licensed && (
           <>
             <h3>Contact us to continue</h3>
             {contact ? (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 export default function AuthLayout({
   children,
 }: {
@@ -8,10 +9,7 @@ export default function AuthLayout({
     <main className="auth-layout">
       <section className="auth-story">
         <Link className="brand" href="/login">
-          <span className="brand-mark">s</span>
-          <span>
-            setu<span className="brand-sub">WORKFLOW</span>
-          </span>
+          <Logo />
         </Link>
         <div>
           <p className="eyebrow">YOUR FIRM. CONNECTED.</p>

@@ -4,7 +4,8 @@ import { currentUser, sessionToken } from '@/lib/session';
 import { hasPermission } from '@/lib/auth';
 import { readAdmin, userOptions, sectionPermission, type Section } from '@/lib/admin';
 import { AdminPanel } from '@/components/admin-panel';
-const titles = { users: 'Users', offices: 'Offices', roles: 'Roles', firm: 'Firm Settings' };
+import { AdminTabs, adminTitles } from '@/components/admin-tabs';
+const titles = adminTitles;
 const descriptions = { users: 'Manage the people who make your firm work.', offices: 'A shared workspace, across every location.', roles: 'Give each person the access they need.', firm: 'Set the defaults for your firm’s workspace.' };
 export default async function AdminSection({ params }: { params: Promise<{ section: string }> }) {
   const user = await currentUser();
@@ -17,5 +18,5 @@ export default async function AdminSection({ params }: { params: Promise<{ secti
   const options = section === 'users' ? await userOptions(token) : undefined;
   // Only the selected administration DTO is serialized, never a User/password/session model.
   const serialized = JSON.parse(JSON.stringify(result));
-  return <><div className="page-heading"><p className="eyebrow">FIRM ADMINISTRATION</p><h1>{titles[section]}</h1><p className="muted">{descriptions[section]}</p></div><nav className="tabs" aria-label="Administration">{(Object.keys(titles) as Section[]).filter(s => hasPermission(user, sectionPermission[s])).map(s => <Link key={s} href={`/admin/${s}`} className={s === section ? 'active' : ''} aria-current={s === section ? 'page' : undefined}>{titles[s]}</Link>)}</nav><AdminPanel section={section} ownId={user.id} options={options} {...{ [section]: serialized }}/></>;
+  return <><div className="page-heading"><p className="eyebrow">FIRM ADMINISTRATION</p><h1>{titles[section]}</h1><p className="muted">{descriptions[section]}</p></div><AdminTabs user={user} current={section}/><AdminPanel section={section} ownId={user.id} options={options} {...{ [section]: serialized }}/></>;
 }

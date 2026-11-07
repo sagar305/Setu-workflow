@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TrialBanner, TrialAccess } from "@/components/trial-access";
-import { trialState } from "@/lib/trial";
+import { accessState } from "@/lib/trial";
 import { currentUser } from "@/lib/session";
 import { hasPermission } from "@/lib/auth";
 import { Navigation } from "@/components/navigation";
@@ -13,6 +13,7 @@ export default async function WorkspaceLayout({
   children: React.ReactNode;
 }) {
   const user = await currentUser();
+  const access = accessState(user.firm);
   const firstAdmin = (Object.keys(sectionPermission) as Section[]).find((s) =>
     hasPermission(user, sectionPermission[s]),
   );
@@ -35,7 +36,7 @@ export default async function WorkspaceLayout({
           hasPermission(user, "engagements.view")
         }
         assignments={hasPermission(user, "allocations.manage_team")}
-        adminHref={firstAdmin ? `/admin/${firstAdmin}` : undefined}
+        adminHref={firstAdmin ? `/admin/${firstAdmin}` : user.isSuperAdmin ? "/admin/subscription" : undefined}
       />
       <div className="workspace">
         <header className="topbar">
@@ -61,8 +62,8 @@ export default async function WorkspaceLayout({
           </div>
         </header>
         <main id="main" className="main-content">
-          <TrialAccess readOnly={trialState(user.firm).readOnly}>
-            <TrialBanner state={trialState(user.firm)} />
+          <TrialAccess readOnly={access.readOnly}>
+            <TrialBanner state={access} />
             {children}
           </TrialAccess>
         </main>

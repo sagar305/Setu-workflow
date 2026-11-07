@@ -38,6 +38,7 @@ import { engagementActor } from "@/lib/engagements";
 import { workflowGet, workflowPost } from "@/lib/workflow-api";
 import { allocationGet, allocationPost } from "@/lib/allocation-api";
 import { listAllocations } from "@/lib/allocations";
+import { readSubscription, redeemLicenseKey, setSeat } from "@/lib/subscription";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
@@ -104,6 +105,8 @@ export async function GET(req: NextRequest, context: Context) {
       return await clientGet(token, path, req.nextUrl.searchParams);
     if (path[0] === "engagements")
       return await engagementGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "subscription" && path.length === 1)
+      return NextResponse.json(await readSubscription(token));
     if (path.join("/") === "admin/options")
       return NextResponse.json(await userOptions(token));
     invariant(
@@ -180,7 +183,13 @@ export async function POST(req: NextRequest, context: Context) {
     );
     const route = path.join("/");
     const token = req.cookies.get(cookieName)?.value;
-    if (path[0] !== "auth") assertTrialWritable((await principal(token)).firm);
+    // Subscription changes are how a read-only (lapsed or over-seat) workspace recovers.
+    if (path[0] !== "auth" && path[0] !== "subscription")
+      assertTrialWritable((await principal(token)).firm);
+    if (route === "subscription/redeem")
+      return NextResponse.json(await redeemLicenseKey(token, data));
+    if (path[0] === "subscription" && path[1] === "seats" && path[2] && path.length === 3)
+      return NextResponse.json(await setSeat(token, path[2], data));
     if (path[0] === "capacity") return await capacityPost(token, path, data);
     if (path[0] === "time") return await timePost(token, path, data);
     if (path[0] === "points") return await pointPost(token, path, data);

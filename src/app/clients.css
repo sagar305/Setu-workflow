@@ -72,7 +72,7 @@
 .client-code {
   font-size: 12px;
   white-space: nowrap;
-  color: #55736a;
+  color: #545974;
 }
 .client-tags {
   display: flex;
@@ -121,7 +121,7 @@
   width: 260px;
   background: white;
   border: 1px solid var(--line);
-  box-shadow: 0 8px 25px #173a3026;
+  box-shadow: 0 8px 25px #161C3B26;
   border-radius: 8px;
   max-height: 420px;
   overflow: auto;
@@ -236,7 +236,7 @@
   display: grid;
   grid-template-columns: 40% 60%;
   padding: 10px 0;
-  border-bottom: 1px solid #edf0ee;
+  border-bottom: 1px solid #EDEDF0;
   font-size: 14px;
   gap: 10px;
 }
@@ -295,8 +295,8 @@
   color: #3b6197;
 }
 .status.prospect {
-  background: #e9eeef;
-  color: #546970;
+  background: #E9EAEF;
+  color: #535871;
 }
 .status.terminated {
   background: #f7e8e6;
