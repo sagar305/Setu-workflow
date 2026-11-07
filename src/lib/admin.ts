@@ -6,8 +6,9 @@ import { userInput, userEdit, officeInput, roleInput, firmInput, id } from './va
 import { invariant } from './errors';
 import { newToken, tokenHash } from './crypto';
 import { sendLink } from './mail';
+import { assertSeatAvailable } from './subscription';
 
-export const safeUser = { id: true, firstName: true, lastName: true, email: true, jobTitle: true, status: true, roleId: true, primaryOfficeId: true, managerId: true, weeklyCapacityHours: true, lastLoginAt: true, role: { select: { roleName: true } }, primaryOffice: { select: { officeName: true } } } satisfies Prisma.UserSelect;
+export const safeUser = { id: true, isAccountOwner: true, hasSeat: true, firstName: true, lastName: true, email: true, jobTitle: true, status: true, roleId: true, primaryOfficeId: true, managerId: true, weeklyCapacityHours: true, lastLoginAt: true, role: { select: { roleName: true } }, primaryOffice: { select: { officeName: true } } } satisfies Prisma.UserSelect;
 export type Section = 'users' | 'offices' | 'roles' | 'firm';
 export const sectionPermission: Record<Section, PermissionKey> = { users: 'users.manage', offices: 'offices.manage', roles: 'roles.manage', firm: 'firm.manage' };
 export async function readAdmin(token: string | undefined, section: Section, recordId?: string) {
@@ -59,6 +60,8 @@ export async function inviteUser(token: string | undefined, input: unknown) {
     await references(tx, actor, data);
     // Same response for an address already registered in any firm.
     invariant(!await tx.user.findUnique({ where: { email: data.email }, select: { id: true } }), 'This email address cannot be invited.');
+    // A new colleague takes a seat on a licensed plan.
+    await assertSeatAvailable(tx, actor);
     const user = await tx.user.create({ data: { ...data, firmId: actor.firmId } });
     await tx.invitation.create({ data: { firmId: actor.firmId, userId: user.id, tokenHash: tokenHash(raw), expiresAt: new Date(Date.now() + 48 * 3600_000) } });
     await audit(tx, actor.firmId, actor.id, 'user.invited', 'User', user.id, { roleId: data.roleId, primaryOfficeId: data.primaryOfficeId });
@@ -95,6 +98,9 @@ export async function editUser(token: string | undefined, userId: string, input:
     invariant(data.status !== 'Active' || before.passwordHash, 'This user must accept an invitation first.');
     await references(tx, actor, data, userId);
     invariant(actor.id !== userId || (data.status === 'Active' && data.roleId === before.roleId), 'You cannot deactivate yourself or change your own role.');
+    // The account owner owns the subscription and must stay an active Firm Admin.
+    invariant(!before.isAccountOwner || (data.status === 'Active' && data.roleId === before.roleId), 'The account owner must remain an active Firm Admin.', 403);
+    if (before.status === 'Inactive' && data.status !== 'Inactive' && before.hasSeat) await assertSeatAvailable(tx, actor);
     // A fixed default administrator role is protected against lockout. Authorization still uses permissions.
     const administrativeRole = await tx.role.findFirstOrThrow({ where: { firmId: actor.firmId, isDefault: true, permissions: { some: { permissionKey: 'firm.manage' } } } });
     if (before.roleId === administrativeRole.id && before.status === 'Active' && (data.roleId !== before.roleId || data.status !== 'Active')) {

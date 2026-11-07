@@ -14,6 +14,8 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "firm:provision": "tsx scripts/provision-firm.ts",
+    "license": "tsx scripts/license.ts",
+    "console:admin": "tsx scripts/platform-admin.ts",
     "test": "tsx scripts/test-migrate.ts && vitest run",
     "test:e2e": "playwright test"
   },
@@ -23,6 +25,7 @@
     "csv-stringify": "^6.9.0",
     "lucide-react": "^0.577.0",
     "next": "16.3.6",
+    "qrcode": "1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.3.6"
@@ -31,6 +34,7 @@
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^22.19.15",
+    "@types/qrcode": "1.5.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "dotenv": "^17.3.1",

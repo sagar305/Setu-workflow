@@ -61,6 +61,7 @@ export async function provisionFirm(input: {
           email: address,
           passwordHash: input.trial ? null : passwordHash,
           roleId: roles[0].id,
+          isAccountOwner: true,
           status: input.trial ? "Invited" : "Active",
         },
       });

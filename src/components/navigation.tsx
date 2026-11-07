@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -39,10 +40,7 @@ export function Navigation({ adminHref, assignments = false, time = false, capac
       </button>
       <aside className={`sidebar ${open ? "open" : ""}`}>
         <Link href="/dashboard" className="brand">
-          <span className="brand-mark">s</span>
-          <span>
-            setu<span className="brand-sub">WORKFLOW</span>
-          </span>
+          <Logo />
         </Link>
         <div className="workspace-label">
           FIRM WORKSPACE <PanelLeftClose size={15} />

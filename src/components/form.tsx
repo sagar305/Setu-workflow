@@ -41,7 +41,10 @@ export function MutationForm({
 }) {
   const router = useRouter();
   const trialReadOnly = useTrialReadOnly();
-  const readOnly = trialReadOnly && !endpoint.startsWith("/api/auth/");
+  const readOnly =
+    trialReadOnly &&
+    !endpoint.startsWith("/api/auth/") &&
+    !endpoint.startsWith("/api/subscription/");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -85,8 +88,8 @@ export function MutationForm({
       )}
       {readOnly && (
         <p className="notice">
-          Your trial has ended. This workspace is read-only.{" "}
-          <Link href="/trial">View trial details</Link>
+          This workspace is read-only.{" "}
+          <Link href="/trial">View plan details</Link>
         </p>
       )}
       <div className="form-footer">

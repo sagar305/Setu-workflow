@@ -75,7 +75,7 @@
 .engagement-table th {padding:14px 10px;font-size:12px;}
 .pagination {padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
 .column-picker {position:relative;}
-.column-picker>div {position:absolute;right:0;top:48px;z-index:5;min-width:230px;max-height:420px;overflow:auto;background:var(--surface,#fff);padding:16px;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 22px #123b3420;}
+.column-picker>div {position:absolute;right:0;top:48px;z-index:5;min-width:230px;max-height:420px;overflow:auto;background:var(--surface,#fff);padding:16px;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 22px #11173C20;}
 .client-details dd {
   white-space: pre-wrap;
 }

@@ -38,6 +38,32 @@ import { engagementActor } from "@/lib/engagements";
 import { workflowGet, workflowPost } from "@/lib/workflow-api";
 import { allocationGet, allocationPost } from "@/lib/allocation-api";
 import { listAllocations } from "@/lib/allocations";
+import { readSubscription, redeemLicenseKey, setSeat } from "@/lib/subscription";
+import {
+  assertPlatformEnabled,
+  cancelKey,
+  grantDays,
+  isPlatformRoute,
+  issueKey,
+  platformCookie,
+  platformPrincipal,
+  remindAll,
+  remindOwner,
+  revealKey,
+  sendOwnerReset,
+  setFirmStatus,
+} from "@/lib/platform";
+import {
+  acceptInvite,
+  inviteDetails,
+  inviteStaff,
+  platformLogout,
+  resetStaff,
+  setStaffActive,
+  staffLogin,
+  staffSetupTwoFactor,
+  staffVerifyCode,
+} from "@/lib/platform-auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
@@ -104,6 +130,8 @@ export async function GET(req: NextRequest, context: Context) {
       return await clientGet(token, path, req.nextUrl.searchParams);
     if (path[0] === "engagements")
       return await engagementGet(token, path, req.nextUrl.searchParams);
+    if (path[0] === "subscription" && path.length === 1)
+      return NextResponse.json(await readSubscription(token));
     if (path.join("/") === "admin/options")
       return NextResponse.json(await userOptions(token));
     invariant(
@@ -180,7 +208,62 @@ export async function POST(req: NextRequest, context: Context) {
     );
     const route = path.join("/");
     const token = req.cookies.get(cookieName)?.value;
-    if (path[0] !== "auth") assertTrialWritable((await principal(token)).firm);
+    if (path[0] === "platform") {
+      assertPlatformEnabled();
+      const platformToken = req.cookies.get(platformCookie)?.value;
+      // Only trust forwarded addresses behind a proxy that sets them (Vercel does).
+      const ip =
+        process.env.TRUST_PROXY === "true"
+          ? (req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip"))
+          : null;
+      const withSession = (result: { session: string; maxAge: number }) => {
+        const response = NextResponse.json({ message: "Signed in." });
+        response.cookies.set(platformCookie, result.session, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          path: "/",
+          maxAge: result.maxAge,
+        });
+        return response;
+      };
+      if (route === "platform/login")
+        return NextResponse.json(await staffLogin(data, ip, isPlatformRoute));
+      if (route === "platform/setup-2fa") return withSession(await staffSetupTwoFactor(data, ip));
+      if (route === "platform/verify") return withSession(await staffVerifyCode(data, ip));
+      if (route === "platform/invite-details") return NextResponse.json(await inviteDetails(data.token));
+      if (route === "platform/accept") return NextResponse.json(await acceptInvite(data, ip));
+      if (route === "platform/logout") {
+        await platformLogout(platformToken, ip);
+        const response = NextResponse.json({ message: "Signed out." });
+        response.cookies.set(platformCookie, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 0 });
+        return response;
+      }
+      const admin = { ...(await platformPrincipal(platformToken)), ip };
+      const [, area, target, verb] = path;
+      if (route === "platform/keys") return NextResponse.json(await issueKey(admin, data));
+      if (route === "platform/remind-all") return NextResponse.json(await remindAll(admin, data));
+      if (route === "platform/team") return NextResponse.json(await inviteStaff(admin, data));
+      if (path.length === 4 && target) {
+        if (area === "keys" && verb === "reveal") return NextResponse.json(await revealKey(admin, target));
+        if (area === "keys" && verb === "cancel") return NextResponse.json(await cancelKey(admin, target));
+        if (area === "firms" && verb === "days") return NextResponse.json(await grantDays(admin, target, data));
+        if (area === "firms" && verb === "status") return NextResponse.json(await setFirmStatus(admin, target, data));
+        if (area === "firms" && verb === "remind") return NextResponse.json(await remindOwner(admin, target));
+        if (area === "firms" && verb === "reset") return NextResponse.json(await sendOwnerReset(admin, target));
+        if (area === "team" && verb === "reset") return NextResponse.json(await resetStaff(admin, target));
+        if (area === "team" && verb === "active")
+          return NextResponse.json(await setStaffActive(admin, target, data.active === true));
+      }
+      throw new AppError("Not found.", 404);
+    }
+    // Subscription changes are how a read-only (lapsed or over-seat) workspace recovers.
+    if (path[0] !== "auth" && path[0] !== "subscription")
+      assertTrialWritable((await principal(token)).firm);
+    if (route === "subscription/redeem")
+      return NextResponse.json(await redeemLicenseKey(token, data));
+    if (path[0] === "subscription" && path[1] === "seats" && path[2] && path.length === 3)
+      return NextResponse.json(await setSeat(token, path[2], data));
     if (path[0] === "capacity") return await capacityPost(token, path, data);
     if (path[0] === "time") return await timePost(token, path, data);
     if (path[0] === "points") return await pointPost(token, path, data);

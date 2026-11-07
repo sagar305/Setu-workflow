@@ -12,6 +12,10 @@ export async function sendLink(to: string, kind: 'invite' | 'reset', token: stri
     ? `You have been invited to join ${firm} on Setu Workflow. Set your password: ${link}\nThis link expires in 48 hours and can be used once.`
     : `Reset your Setu Workflow password: ${link}\nThis link expires in 30 minutes and can be used once. If you did not request it, ignore this email.`;
   const subject = kind === 'invite' ? 'Your Setu Workflow invitation' : 'Reset your Setu Workflow password';
+  await sendEmail(to, subject, text);
+}
+/** Plain-text email through Resend, or written to .local/mail in development. */
+export async function sendEmail(to: string, subject: string, text: string) {
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_MAIL === 'true') {
     const directory = path.join(process.cwd(), '.local', 'mail');
     await mkdir(directory, { recursive: true });

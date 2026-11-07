@@ -34,7 +34,7 @@
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid #e2e8e5;
+  border: 1px solid #E2E3E8;
   border-radius: 8px;
 }
 .allocation-days small {
@@ -68,7 +68,7 @@
 .allocation-filters > summary {
   cursor: pointer;
   padding: 18px 24px;
-  color: #245446;
+  color: #232A55;
   font-weight: 600;
 }
 .allocation-filters .client-form-section {
@@ -99,8 +99,8 @@
 .allocation-editor {
   padding: 16px;
   margin-top: 12px;
-  border: 1px solid #cddbd4;
-  background: #f7faf8;
+  border: 1px solid #CDCFDB;
+  background: #F7F7FA;
   border-radius: 8px;
 }
 .allocation-editor .form-grid {
@@ -111,10 +111,10 @@ dialog.allocation-editor {
   max-height: 85vh;
   margin: auto;
   padding: 24px;
-  color: #233c31;
+  color: #22263D;
 }
 dialog.allocation-editor::backdrop {
-  background: #16332577;
+  background: #151A3477;
 }
 dialog.allocation-editor h3 {
   margin: 12px 0;
@@ -142,7 +142,7 @@ dialog.allocation-editor h3 {
   display: grid;
   gap: 5px;
   padding: 14px 0;
-  border-bottom: 1px solid #e2e8e5;
+  border-bottom: 1px solid #E2E3E8;
 }
 @media (max-width: 900px) {
   .allocation-days {

@@ -69,7 +69,7 @@ Both firms have five users and two offices. The password for **all demo accounts
 | Senior / Reviewer | senior@demo.setu.test | senior@sample.setu.test |
 | Associate / Preparer | associate@demo.setu.test | associate@sample.setu.test |
 
-Seeding skips a firm whose seed administrator already exists; it does not reset existing passwords. `NODE_ENV=production` disables demo seeding and the embedded database runner.
+Seeding skips a firm whose seed administrator already exists; it does not reset existing passwords. Demo seeding runs **only against a local database** (127.0.0.1 / localhost) and never on Vercel or in production; deployed apps get every account through the database (see DEPLOY.md, step 5). `NODE_ENV=production` also disables the embedded database runner.
 
 ## Environment
 
