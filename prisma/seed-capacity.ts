@@ -1,3 +1,4 @@
+import { assertLocalSeeding } from "./seed-guard";
 import { db } from "../src/lib/db";
 import { newToken, tokenHash } from "../src/lib/crypto";
 import { saveEngagement } from "../src/lib/engagements";
@@ -6,8 +7,7 @@ import { saveCapacityAdjustment } from "../src/lib/capacity";
 import { firmDates } from "../src/lib/engagement-constants";
 import { shiftDate } from "../src/lib/capacity-math";
 export async function seedDemoCapacity() {
-  if (process.env.NODE_ENV === "production" && process.env.SEED_DEMO_DATA !== "true")
-    throw new Error("Demo seeding is disabled in production.");
+  assertLocalSeeding();
   const admin = await db.user.findUnique({
     where: { email: "admin@demo.setu.test" },
     include: { firm: true },
