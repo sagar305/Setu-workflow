@@ -1,5 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+
+const subscribeHash = (callback: () => void) => {
+  window.addEventListener("hashchange", callback);
+  return () => window.removeEventListener("hashchange", callback);
+};
+const readHashKey = () =>
+  (new URLSearchParams(window.location.hash.slice(1)).get("key") ?? "").slice(0, 200);
 import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { Field, MutationForm, post } from "./form";
@@ -53,6 +60,9 @@ export function SubscriptionPanel(props: Props) {
   const router = useRouter();
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  // setutechnology.com's "Redeem" button links here with #key=…; the key stays
+  // after the #, which browsers never send to a server.
+  const prefill = useSyncExternalStore(subscribeHash, readHashKey, () => "");
   const seatHolders = users.filter((u) => u.hasSeat && u.status !== "Inactive").length;
   const seats = state.seats ?? INCLUDED_USERS;
   const salesHref = `mailto:${props.salesEmail}?subject=${encodeURIComponent(
@@ -148,6 +158,8 @@ export function SubscriptionPanel(props: Props) {
                 >
                   <Field label="License key">
                     <input
+                      key={prefill}
+                      defaultValue={prefill}
                       name="key"
                       required
                       maxLength={200}

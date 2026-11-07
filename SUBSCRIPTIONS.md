@@ -76,12 +76,20 @@ The order id must be unique per sale; the same id always produces the same key.
 - `TRIAL_CONTACT_EMAIL` — also used as the "Contact sales" address.
 - `PLATFORM_ROUTE_SECRET`, `PLATFORM_SECRET_KEY` — the owner console (below).
 
-## Not done here
+## Buying on setutechnology.com
 
-setutechnology.com does not yet sell Workflow keys. The website needs a copy of
-`src/lib/license-key.ts`, a Workflow checkout (Cashfree / PayPal, as for QR
-Menu) and a key email, using the same `WORKFLOW_LICENSE_SECRET`. Until then,
-keys can be issued with `pnpm license issue`.
+Setu_main branch `claude/workflow-buy-m4q8` adds the website side, the same way
+QR Menu premium is sold: pricing and a buy box on `/products/workflow`,
+Cashfree (INR) / PayPal (USD) checkout, webhooks, and a return page that shows
+the key with a **Redeem** button. That button opens
+`/admin/subscription#key=…` here, which fills the key in. Its
+`lib/workflowLicense.ts` is a copy of `src/lib/license-key.ts` and asserts the
+same test vector. Website keys show in the owner console under Keys → All
+redeemed keys once used.
+
+To go live: set `WORKFLOW_LICENSE_SECRET` to the same value in both apps; on the
+website also set `WORKFLOW_PAYMENTS_ENABLED=true`, `NEXT_PUBLIC_WORKFLOW_APP_URL`
+(this app's URL) and, for PayPal, `WORKFLOW_PAYPAL_WEBHOOK_ID`.
 
 ## Setu owner console (super admin)
 
