@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { renderEmail } from './email-template';
+import { isDemo } from './demo';
 export function appUrl() {
   const url = new URL(process.env.APP_URL ?? 'http://127.0.0.1:3000');
   if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') throw new Error('Production APP_URL must use HTTPS.');
@@ -63,6 +64,8 @@ export async function sendLink(to: string, kind: LinkKind, token: string, firm: 
 /** Email through Resend (HTML with a plain-text part), or written to .local/mail in development. */
 export async function sendEmail(to: string, subject: string, body: string | { html: string; text: string }) {
   const { html, text } = typeof body === 'string' ? { html: undefined, text: body } : body;
+  // The public demo never emails anyone; its addresses are fictional anyway.
+  if (isDemo()) return;
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_MAIL === 'true') {
     const directory = path.join(process.cwd(), '.local', 'mail');
     await mkdir(directory, { recursive: true });

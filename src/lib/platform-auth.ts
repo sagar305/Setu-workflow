@@ -10,6 +10,7 @@ import { db } from "./db";
 import { limited } from "./auth";
 import { hashPassword, newToken, tokenHash, verifyPassword } from "./crypto";
 import { AppError, invariant } from "./errors";
+import { isDemo } from "./demo";
 import { appUrl, sendEmail } from "./mail";
 import { renderEmail } from "./email-template";
 import { decryptTotpSecret, encryptTotpSecret, newTotpSecret, otpauthUrl, verifyTotp } from "./totp";
@@ -24,6 +25,8 @@ export const platformCookie =
   process.env.NODE_ENV === "production" ? "__Host-setu_platform" : "setu_platform";
 
 export function platformRouteSecret(): string | null {
+  // The owner console never runs on the public demo deployment.
+  if (isDemo()) return null;
   const secret = process.env.PLATFORM_ROUTE_SECRET;
   return secret && secret.length >= 16 ? secret : null;
 }

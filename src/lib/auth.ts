@@ -5,6 +5,7 @@ import { newToken, tokenHash, hashPassword, verifyPassword } from "./crypto";
 import { invariant, AppError } from "./errors";
 import { email, loginInput, tokenInput } from "./validation";
 import { sendLink } from "./mail";
+import { isDemo } from "./demo";
 import type { PermissionKey } from "./permissions";
 
 export type Database = Prisma.TransactionClient;
@@ -116,7 +117,9 @@ export async function limited(
 }
 export async function login(input: unknown, clientKey: string) {
   const data = loginInput.parse(input);
-  await limited("login-email", data.email, 10);
+  // Demo accounts are shared and their password is public, so a per-account
+  // limit would only lock visitors out of each other; the per-client one stays.
+  await limited("login-email", data.email, isDemo() ? 1000 : 10);
   await limited("login-client", clientKey, 100);
   const found = await db.user.findUnique({ where: { email: data.email } });
   const valid = await verifyPassword(

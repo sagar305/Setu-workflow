@@ -65,6 +65,51 @@ Earlier builds could seed two demo firms (`admin@demo.setu.test`, `admin@sample.
 
 `vercel.json` schedules `GET /api/cron/cleanup` daily at 03:00 UTC. It deletes expired sessions and rate-limit rows, and emails plan reminders 14, 7 and 1 days before a firm's plan ends. Vercel sends `Authorization: Bearer $CRON_SECRET`. Without a matching secret, the route returns 404.
 
+## 7. Public demo instance (optional)
+
+A separate, public demo that anyone can log in to, with sample data that is **wiped and reseeded every 12 hours** (00:00 and 12:00 UTC). It is a second Vercel project built from the same repository, with **its own Neon database**. Never point it at the production database, and never set `DEMO_MODE` on the production project.
+
+What changes when `DEMO_MODE=true`:
+
+- The login page lists the demo accounts (two firms × Admin, Partner, Manager, Senior, Associate) with one-click sign-in, and shows the shared `DEMO_PASSWORD`. The password is public on purpose.
+- Every page in the workspace shows a banner counting down to the next reset.
+- Sign-up, password resets, inviting users and deactivating users are off, and no email is ever sent. The sign-up page links to your real app instead (`DEMO_SIGNUP_URL`).
+- The owner console is off, even if `PLATFORM_ROUTE_SECRET` is set.
+- `POST /api/cron/demo-reset` (with `Authorization: Bearer $CRON_SECRET`) empties every table and reseeds the sample data. On any other deployment this route returns 404.
+
+The reset refuses to run unless `DEMO_MODE=true` **and** the database is either empty or already marked as a demo database (the `demo_instance` table, written by the first reset). A database that holds firms but was never marked as a demo, such as production, is never touched. Two resets never overlap.
+
+### Setting it up
+
+1. **New Neon database.** In Neon (or Vercel → Storage), create a separate database for the demo.
+2. **New Vercel project.** Import the same repository again as a second project (for example `setu-workflow-demo`). Set **Build Command** to `pnpm vercel-build` and connect the new database. Migrations run on deploy as usual.
+3. **Environment variables** (Production) on the demo project:
+
+   | Variable | Value |
+   | --- | --- |
+   | `DEMO_MODE` | `true` |
+   | `DEMO_PASSWORD` | The password every demo account uses, 12+ characters, for example `SetuDemo-2026`. It is shown on the login page. |
+   | `DEMO_SIGNUP_URL` | Optional. Your real app's sign-up page, for example `https://<your app>/signup`. |
+   | `APP_URL` | The demo's own URL, for example `https://setu-workflow-demo.vercel.app`. |
+   | `CRON_SECRET` | A new random value (`openssl rand -hex 32`), different from production. |
+   | `TRUST_PROXY` | `true` |
+
+   Leave out `RESEND_API_KEY`, `MAIL_FROM`, `WORKFLOW_LICENSE_SECRET` and `PLATFORM_*`. The demo sends no email and has no console.
+4. **Schedule.** Vercel Hobby only runs crons once a day, so the 12-hour schedule lives in GitHub Actions (`.github/workflows/demo-reset.yml`). In the GitHub repository, open **Settings → Secrets and variables → Actions** and add:
+   - `DEMO_APP_URL`: the demo's URL, without a trailing slash.
+   - `DEMO_CRON_SECRET`: the same value as the demo project's `CRON_SECRET`.
+
+   Until both secrets exist, the workflow skips itself, so it is harmless in forks or before the demo exists.
+5. **First seed.** Open **Actions → Demo reset → Run workflow**. The database is empty at first, so the first run marks it as a demo and seeds it. After that it runs every 12 hours. GitHub emails you if a run fails.
+
+You can also reset by hand from your computer, against the demo database only:
+
+```sh
+DATABASE_URL="<demo database URL>" DEMO_MODE=true DEMO_PASSWORD="<same as Vercel>" pnpm demo:reset
+```
+
+On Vercel Pro you could instead add `{ "path": "/api/cron/demo-reset", "schedule": "0 0,12 * * *" }` to `vercel.json`. Don't do this on Hobby: deployments with a cron more frequent than daily fail. It's also harmless on production, where the route returns 404.
+
 ## Later schema changes
 
 1. Create migrations locally as usual (see README, "Database changes and deployment").

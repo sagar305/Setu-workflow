@@ -1362,3 +1362,13 @@ model PlanReminder {
   @@index([createdAt])
   @@map("plan_reminders")
 }
+
+// Present only in a demo deployment's database. See src/lib/demo.ts.
+model DemoInstance {
+  id          Int       @id @default(1)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastResetAt DateTime? @map("last_reset_at")
+  resettingSince DateTime? @map("resetting_since")
+
+  @@map("demo_instance")
+}

@@ -2,6 +2,8 @@
 // their users through the database: firm sign-up (/signup), email invitations
 // from Admin → Users, and Setu staff accounts in the owner console. There is
 // no environment-variable switch that seeds shared demo logins anywhere else.
+// The one exception is the dedicated public demo deployment, whose reset
+// (src/lib/demo-reset.ts) has its own, stricter guard.
 export function assertLocalSeeding() {
   if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV)
     throw new Error("Demo seeding is development-only and never runs on a deployment.");
