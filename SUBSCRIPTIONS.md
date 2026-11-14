@@ -7,12 +7,16 @@ setutechnology.com, receives a **license key**, and pastes it into the app.
 
 | Plan    | India  | Global  | Users |
 | ------- | ------ | ------- | ----- |
-| Monthly | ₹999   | $9.99   | 3     |
-| Yearly  | ₹9,999 | $99.99  | 3     |
+| Monthly | ₹999   | $9.99   | 10    |
+| Yearly  | ₹9,999 | $99.99  | 10    |
 
-More than 3 users: contact sales. Extra users are $4.99 per user per month;
+More than 10 users: contact sales. Extra users are $4.99 per user per month;
 sales issues a key carrying the agreed number of users. Prices live in
-`src/lib/plans.ts`.
+`src/lib/plans.ts` (`INCLUDED_USERS` is the users per plan).
+
+The user count travels inside each license key, so the website that sells keys
+(setutechnology.com) must issue them with the same number of users. Firms that
+already redeemed a 3-user key keep 3 users until they redeem a new key.
 
 ## Account owner
 
