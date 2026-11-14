@@ -6,7 +6,7 @@
  *   tsx scripts/license.ts check  SETUWF-XXXXXX-...
  *   tsx scripts/license.ts revoke SETUWF-XXXXXX-... --yes
  *
- * `issue` is how sales sells a plan for more than the standard 3 users: agree
+ * `issue` is how sales sells a plan for more than the standard 10 users: agree
  * the seats and price, take payment, then issue a key with that seat count
  * (e.g. `issue SALES-2026-014 yearly 8`). The order id must be unique per sale;
  * the same id always yields the same key.

@@ -10,8 +10,11 @@ const readHash = () =>
   new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
 export function AuthForm({
   mode,
+  demo = false,
 }: {
   mode: "login" | "forgot" | "invite" | "reset";
+  /** The public demo: no password resets or sign-ups to link to. */
+  demo?: boolean;
 }) {
   const token = useSyncExternalStore(subscribeHash, readHash, () => null);
   const [firm, setFirm] = useState("");
@@ -103,7 +106,7 @@ export function AuthForm({
           </>
         )}
       </MutationForm>
-      <div className="auth-links">
+      {!demo && <div className="auth-links">
         {mode === "login" ? (
           <>
             <Link href="/forgot">Forgot password?</Link>
@@ -112,7 +115,7 @@ export function AuthForm({
         ) : (
           <Link href="/login">Back to login</Link>
         )}
-      </div>
+      </div>}
     </>
   );
 }

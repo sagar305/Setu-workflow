@@ -3,7 +3,7 @@
 // A plan covers INCLUDED_USERS people. Larger firms buy extra users through
 // sales, who issue a key carrying the agreed seat count.
 
-export const INCLUDED_USERS = 3;
+export const INCLUDED_USERS = 10;
 
 export type Billing = "monthly" | "yearly";
 

@@ -1,4 +1,5 @@
 import { requestTrial } from "@/lib/signup";
+import { assertNotDemo } from "@/lib/demo";
 import { assertTrialWritable } from "@/lib/trial";
 import { principal } from "@/lib/auth";
 import { reportGet } from "@/lib/report-api";
@@ -281,6 +282,11 @@ export async function POST(req: NextRequest, context: Context) {
         ? (req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
           "shared")
         : "shared";
+    if (route === "auth/signup") assertNotDemo("Sign-up");
+    if (route === "auth/forgot" || route === "auth/reset") assertNotDemo("Password reset");
+    if (route === "admin/users" || path[3] === "resend") assertNotDemo("Inviting users");
+    // Everyone shares the demo accounts; deactivating one would lock other visitors out.
+    if (path[0] === "admin" && path[1] === "users" && data.status === "Inactive") assertNotDemo("Deactivating users");
     if (route === "auth/signup")
       return NextResponse.json(await requestTrial(data, clientKey));
     if (route === "auth/login") {

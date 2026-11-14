@@ -6,6 +6,8 @@ import { hasPermission } from "@/lib/auth";
 import { Navigation } from "@/components/navigation";
 import { LogoutButton } from "@/components/form";
 import { sectionPermission, type Section } from "@/lib/admin";
+import { DemoBanner } from "@/components/demo";
+import { DEMO_RESET_HOURS, isDemo, nextDemoReset } from "@/lib/demo";
 export const dynamic = "force-dynamic";
 export default async function WorkspaceLayout({
   children,
@@ -14,6 +16,7 @@ export default async function WorkspaceLayout({
 }) {
   const user = await currentUser();
   const access = accessState(user.firm);
+  const now = new Date();
   const firstAdmin = (Object.keys(sectionPermission) as Section[]).find((s) =>
     hasPermission(user, sectionPermission[s]),
   );
@@ -63,6 +66,9 @@ export default async function WorkspaceLayout({
         </header>
         <main id="main" className="main-content">
           <TrialAccess readOnly={access.readOnly}>
+            {isDemo() && (
+              <DemoBanner next={nextDemoReset(now).toISOString()} serverNow={now.toISOString()} hours={DEMO_RESET_HOURS} />
+            )}
             <TrialBanner state={access} />
             {children}
           </TrialAccess>

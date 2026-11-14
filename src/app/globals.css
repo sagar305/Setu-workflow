@@ -16,3 +16,5 @@
 .price-table{border:1px solid var(--line);border-radius:7px;overflow:hidden}.price-table th{border-top:0}.price-table td{padding:12px 21px;font-weight:600}.price-table td:first-child{font-weight:400}
 .subscription .table-toolbar h2{font-size:18px;margin-bottom:4px}.seat-button{min-height:34px;padding:6px 12px;font-size:13px;white-space:nowrap}
 @media(max-width:800px){.subscription-grid{grid-template-columns:1fr}.subscription-status{padding:22px}.subscription-facts{gap:20px}}
+.demo-banner{background:#FDF1E1;border:1px solid #F2C27F;margin-top:0}.demo-login{background:#FDF1E1;border:1px solid #F2C27F;margin:0 0 26px}.demo-login p{margin:6px 0 12px}.demo-login code{background:#fff;padding:1px 5px;border-radius:4px;font-size:13px}.demo-accounts{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.auth-card .demo-accounts .button{min-height:36px;padding:6px 10px}.demo-login details{margin-top:12px}.demo-login summary{cursor:pointer;color:var(--green);font-weight:600}.demo-login details p{margin:6px 0 0;word-break:break-word}
+.demo-trial a{color:var(--green);font-weight:600;text-decoration:underline}
